@@ -1053,7 +1053,7 @@ function loadState(){
   if(!mgCfg.phantom)mgCfg.phantom=JSON.parse(JSON.stringify(DEF_MG_PHANTOM));
   if(!mgCfg.hints)mgCfg.hints=JSON.parse(JSON.stringify(DEF_MG_HINTS));
   if(!mgCfg.notifyPrefs)mgCfg.notifyPrefs={};
-  if(!mgCfg.sheetsUrl)mgCfg.sheetsUrl='';
+  if(!mgCfg.sheetsUrl)mgCfg.sheetsUrl='https://script.google.com/macros/s/AKfycbwYD1xG1Tv3GxCp1e_dfFs1EVQUY42cwkNctVEpC41KiHdnbP6zd8kneYb5D7X0-p78/exec';
   try{mgRecords=JSON.parse(localStorage.getItem('mg-rec-v3'))||[];}catch(e){mgRecords=[];}
   if(!mgRecords.length) seedMgData();
 }
