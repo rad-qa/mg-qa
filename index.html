@@ -900,6 +900,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
           </div>
           <button class="btn btn-teal btn-sm" onclick="syncNotifyToSheets(true)">立即同步</button>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:#1a2744">設備設定</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px">同步至 mg_equip 工作表</div>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="syncEquipToSheets(true)">立即同步</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:#1a2744">執行重點設定</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px">同步至 mg_hints 工作表</div>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="syncHintsToSheets(true)">立即同步</button>
+        </div>
       </div>
       <div id="manual-sync-status" style="margin-top:10px"></div>
     </div>
@@ -1137,6 +1151,22 @@ async function testSheetsConnection(){
   }catch(err){
     showSyncStatus('sheets-conn-status','err','連線失敗：'+err.message);
   }
+}
+
+// 同步設備設定至 Sheets
+async function syncEquipToSheets(manual=false){
+  const url=getSheetsUrl();if(!url)return;
+  const data={equip:mgCfg.equip||{},screen:mgCfg.screen||{},compress:mgCfg.compress||{},tool:mgCfg.tool||{},phantom:mgCfg.phantom||{}};
+  const elId=manual?'manual-sync-status':'equip-sync-status';
+  await callSafe(url,{action:'syncEquip',data},elId,'設備設定已同步至 Google Sheets');
+}
+
+// 同步執行重點設定至 Sheets
+async function syncHintsToSheets(manual=false){
+  const url=getSheetsUrl();if(!url)return;
+  const data=mgCfg.hints||{};
+  const elId=manual?'manual-sync-status':'hints-sync-status';
+  await callSafe(url,{action:'syncHints',data},elId,'執行重點設定已同步至 Google Sheets');
 }
 
 // 同步使用者至 Sheets（showMsg=true 時顯示手動同步狀態，false 時顯示在 users-sync-status）
@@ -2586,31 +2616,37 @@ function saveMgEquipCfg(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.equip={brand:g('mg-cfg-brand'),model:g('mg-cfg-model'),room:g('mg-cfg-room'),phantom:g('mg-cfg-phantom'),phantomSn:g('mg-cfg-phantom-sn')};
   saveState();initMgEquipDisplay();showToast('設備設定已儲存');
+  syncEquipToSheets(false);
 }
 function saveMgScreenCfg(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.screen={acqBrand:g('mg-cfg-acq-brand'),acqModel:g('mg-cfg-acq-model'),acqSn:g('mg-cfg-acq-sn'),radBrand:g('mg-cfg-rad-brand'),radModel:g('mg-cfg-rad-model'),radSnL:g('mg-cfg-rad-sn-l'),radSnR:g('mg-cfg-rad-sn-r')};
   saveState();initMgEquipDisplay();showToast('螢幕設定已儲存');
+  syncEquipToSheets(false);
 }
 function saveMgPhantomCfg(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.phantom={paddleSize2d:g('mg-cfg-paddle-size-2d'),paddleType2d:g('mg-cfg-paddle-type-2d'),hint2d:g('mg-cfg-hint-2d'),paddleSize3d:g('mg-cfg-paddle-size-3d'),paddleType3d:g('mg-cfg-paddle-type-3d'),hint3d:g('mg-cfg-hint-3d')};
   saveState();applyPhantomCfg();showToast('假體影像設定已儲存');
+  syncEquipToSheets(false);
 }
 function saveMgCompressCfg(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.compress={paddle:g('mg-cfg-compress-paddle'),actualThick:parseFloat(g('mg-cfg-actual-thick'))||4.5,forceKg:parseFloat(g('mg-cfg-compress-force-kg'))||0};
   saveState();applyCompressCfg();showToast('壓迫厚度設定已儲存');
+  syncEquipToSheets(false);
 }
 function saveMgCompressToolCfg(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.tool={tool:g('mg-cfg-tool'),unit:g('mg-cfg-unit')};
   saveState();applyToolCfg();showToast('壓迫力工具設定已儲存');
+  syncEquipToSheets(false);
 }
 function saveMgHints(){
   const g=id=>document.getElementById(id)?.value||'';
   mgCfg.hints={h1:g('hint1-input'),h2:g('hint2-input'),h3:g('hint3-input'),rad:g('hint-rad-input'),radImg:g('hint-rad-img-input')};
   saveState();applyMgHints();showToast('執行重點已儲存');
+  syncHintsToSheets(false);
 }
 
 // ══ NOTIFY ══
