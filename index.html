@@ -301,10 +301,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
     margin:0 !important;
     padding:10px 14px
   }
-  /* 各 page 的內距 */
-  .page.active{
-    padding:14px 14px 70px !important
-  }
+  /* 各 page 的顯示與內距 */
+  .page{display:none !important}
+  .page.active{display:block !important;padding:14px 14px 70px}
   /* 元件 RWD */
   .met-grid{grid-template-columns:repeat(2,1fr)}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
@@ -655,7 +654,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
         <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">3. 整個取像過程中皆可維持足夠的壓迫力</td><td></td><td><div class="pf-wrap"><input type="radio" name="mgs-p3-2d" id="mgs-p3-2dp" value="P" onchange="evalSemiannual()"><label for="mgs-p3-2dp">P</label><input type="radio" name="mgs-p3-2d" id="mgs-p3-2df" value="F" onchange="evalSemiannual()"><label for="mgs-p3-2df">F</label></div></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
       </tbody>
     </table></div>
-    <div class="scroll-hint-label">← 左右滑動查看更多 →</div> class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    <div class="scroll-hint-label">← 左右滑動查看更多 →</div>
+    <div id="mgs-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
   </div>
   <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgs-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
   <div class="tab-confirm-box" id="mgs-cbox">
@@ -1390,9 +1390,9 @@ function initMgRadTable(){
   const seen={};
   tb.innerHTML=MG_RAD_ITEMS.map(item=>{
     let cc2='';
-    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 6px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;white-space:normal;word-break:break-all">${item.cat}</td>`;}
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 6px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;white-space:normal;overflow-wrap:break-word">${item.cat}</td>`;}
     if(item.isScore){
-      return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;word-break:break-all">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
+      return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;overflow-wrap:break-word">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
         <td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">
           <input type="number" id="mgm-rad-l-fiber" placeholder="纖維" min="0" max="6" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
           <input type="number" id="mgm-rad-l-calc" placeholder="鈣化" min="0" max="5" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
@@ -1406,7 +1406,7 @@ function initMgRadTable(){
           <div id="mgm-rad-r-score-badge"><span class="badge bn" style="font-size:10px">待輸入</span></div>
         </div></td></tr>`;
     }
-    return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;word-break:break-all">${item.label}</td>
+    return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;overflow-wrap:break-word">${item.label}</td>
       <td><div class="pf-wrap"><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}p">P</label><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}f">F</label></div></td>
       <td><div class="pf-wrap"><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}p">P</label><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}f">F</label></div></td></tr>`;
   }).join('');
