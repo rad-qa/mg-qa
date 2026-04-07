@@ -22,7 +22,7 @@
 body{font-family:system-ui,sans-serif;font-size:14px;color:#2c3e50;background:var(--gray-l);min-height:100vh;overflow-x:hidden}
 .app{display:none;min-height:100vh}
 .app.app-visible{display:flex}
-@media(max-width:768px){
+@media screen and (max-width:768px){
   .app.app-visible{display:flex;flex-direction:column}
 }
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#7b0d2e,#a0295a,#c0392b);display:flex;align-items:center;justify-content:center;z-index:999}
@@ -238,7 +238,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   font-size:11px;color:var(--gray);
   text-align:right;padding:3px 6px 0;
 }
-@media(max-width:768px){
+@media screen and (max-width:768px){
   .scroll-hint-label{display:block}
 }
 .sync-status{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:8px;font-size:12.5px;margin-top:8px}
@@ -269,7 +269,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   .print-time{font-size:7.5px;color:#888;text-align:right;margin-top:6px}
 }
 #print-area{display:none}
-@media(max-width:768px){
+@media screen and (max-width:768px){
   /* 漢堡按鈕 */
   .hamburger{display:flex !important}
   /* Sidebar：fixed overlay，不佔版面空間 */
@@ -1908,7 +1908,7 @@ function renderMgTrend(){
   };
   buildChart('mgFiberChart',mgFChart,fiber,'纖維',thresholds.fiber.color,thresholds.fiber.min,thresholds.fiber.max,v=>mgFChart=v);
   buildChart('mgCalcChart',mgCChart,calc,'鈣化點群',thresholds.calc.color,thresholds.calc.min,thresholds.calc.max,v=>mgCChart=v);
-  buildChart('mgMChartInst',mgMChartInst,mass,'腫塊物',thresholds.mass.color,thresholds.mass.min,thresholds.mass.max,v=>mgMChartInst=v);
+  buildChart('mgMassChart',mgMChartInst,mass,'腫塊物',thresholds.mass.color,thresholds.mass.min,thresholds.mass.max,v=>mgMChartInst=v);
   // 月平均
   const monthMap={};recs.forEach(r=>{const mo=r.date.slice(0,7);if(!monthMap[mo])monthMap[mo]={f:[],c:[],m:[]};if(r.fiber!=null)monthMap[mo].f.push(r.fiber);if(r.calc!=null)monthMap[mo].c.push(r.calc);if(r.mass!=null)monthMap[mo].m.push(r.mass);});
   const mos=Object.keys(monthMap).sort();
