@@ -1053,30 +1053,15 @@ function nowStamp(){
   const pad=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-// 列印用：把時間戳轉成兩行24小時制格式
+// 列印用：只顯示日期（不含時間）
 function fmtPrintTime(ts){
   if(!ts||ts==='--'||ts==='')return'--';
   try{
-    // 嘗試解析各種格式
-    let d=null;
-    if(/\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}/.test(ts)){
-      // 新格式：2026/04/07 13:04
-      d=new Date(ts.replace(/\//g,'-'));
-    } else {
-      // 舊格式：含上下午的 zh-TW 格式，直接用 Date 解析
-      d=new Date(ts);
-    }
-    if(isNaN(d.getTime())){
-      // 無法解析，直接截短顯示
-      return`<span class="ts">${ts.slice(0,16)}</span>`;
-    }
+    let d=new Date(ts);
+    if(isNaN(d.getTime()))return ts.slice(0,10);
     const pad=n=>String(n).padStart(2,'0');
-    const date=`${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
-    const time=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    return`<span class="ts">${date}<br>${time}</span>`;
-  }catch(e){
-    return`<span class="ts">${ts.slice(0,10)}</span>`;
-  }
+    return`${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+  }catch(e){return ts.slice(0,10);}
 }
 function seedMgData(){
   const ts=nowStamp();const today=new Date();const yr=today.getFullYear();const mo=today.getMonth()+1;
