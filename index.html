@@ -1963,51 +1963,149 @@ function printDoc(html){
   window.print();
 }
 
-function baseHeader(title,subtitle,range,reviewer){
-  const eq=cfgEq();
-  let reviewerBlock='';
-  if(reviewer) reviewerBlock=`<div class="print-review"><strong>月彙整覆核：</strong>${reviewer.name}　${reviewer.time}<br><strong>覆核意見：</strong>${reviewer.opinion}</div>`;
-  return`<div class="print-wrap"><div class="print-h1">${title}</div><div class="print-h2">${subtitle}</div><div class="print-meta"><span>醫院：新北市立土城醫院　影像診療科</span><span>廠牌型號：${eq.brand} / ${eq.model}</span><span>期間：${range}</span><span>列印時間：${new Date().toLocaleString('zh-TW')}</span></div>${reviewerBlock}`;
+// ══ PRINT HELPERS ══
+const HOSP='新北市立土城醫院　影像診療科';
+const ROC_YEAR=y=>`民國${y-1911}年`;
+
+function yearlyBaseHeader(title,subtitle,yr,eq){
+  return `<div class="print-wrap">
+<div class="print-h1">新北市立土城醫院非年度品保測試表</div>
+<div class="print-h2">${subtitle}　${HOSP}　${yr}年（${ROC_YEAR(yr)}）　設備：${eq.brand}/${eq.model}</div>`;
+}
+function monthlyBaseHeader(title,subtitle,range,eq){
+  return `<div class="print-wrap">
+<div class="print-h1">非年度測試記錄表格</div>
+<div class="print-h2">${subtitle}　${HOSP}</div>
+<div class="print-meta"><span>列印範圍：${range}</span><span>設備：${eq.brand} ${eq.model}</span><span>列印時間：${new Date().toLocaleString('zh-TW')}</span></div>`;
 }
 
-// 每年報表共用標題（月份橫列）
-function yearlyHeader(title){
-  const eq=cfgEq();
-  return`<div class="print-wrap"><div class="print-h1">${title}</div><div class="print-meta"><span>廠牌型號：${eq.brand} / ${eq.model}</span><span>列印時間：${new Date().toLocaleString('zh-TW')}</span></div>`;
+// 備註區塊
+function notesBlock(notes){
+  if(!notes||!notes.length)return '';
+  return `<div class="print-notes"><h4>備註</h4>${notes.map(n=>`<div>${n}</div>`).join('')}</div>`;
+}
+// 月彙整覆核區塊
+function monthReviewBlock(reviewer){
+  if(!reviewer)return '';
+  return `<div class="print-review">月彙整覆核　覆核人員：${reviewer.name}　覆核時間：${reviewer.time}　覆核意見：${reviewer.opinion}</div>`;
+}
+// 逐項覆核區塊
+function itemReviewsBlock(recs){
+  const hasReview=recs.some(r=>r.itemReviewer);
+  if(!hasReview)return '';
+  return `<div class="print-review"><strong>逐項覆核資訊</strong><br>${recs.filter(r=>r.itemReviewer).map(r=>`${r.date}　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
 }
 
-// ── 表格01 每日及每週測試總表 ──
+// ── 年度報表：月份欄位產生器 ──
+// 同月多筆：分成子欄位
+function buildYearCols(yr, subtype, typeFilter){
+  const months=Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0'));
+  // 每個月的所有紀錄
+  const byMonth={};
+  months.forEach(m=>{
+    const mo=`${yr}-${m}`;
+    const recs=mgRecords.filter(r=>r.type===typeFilter&&r.subtype===subtype&&r.date?.startsWith(mo))
+      .sort((a,b)=>a.date.localeCompare(b.date));
+    byMonth[m]=recs;
+  });
+  return{months,byMonth};
+}
+
+// 年度表格 thead：第一列月份（colspan），第二列各日期
+function yearlyThead(yr,byMonth,months,extraRowLabel){
+  // row1: 項目 + 月份(colspan)
+  let row1=`<tr><th rowspan="2">${extraRowLabel||'項目'}</th>`;
+  months.forEach(m=>{
+    const cnt=byMonth[m].length||1;
+    row1+=`<td colspan="${cnt}" style="text-align:center;background:#e8e8e8;font-weight:bold">${parseInt(m)}月</td>`;
+  });
+  row1+='</tr>';
+  // row2: 各月子欄位（日期 or —）
+  let row2='<tr>';
+  months.forEach(m=>{
+    if(byMonth[m].length===0){row2+='<td style="background:#f0f0f0">—</td>';}
+    else{byMonth[m].forEach(r=>{row2+=`<td style="background:#f0f0f0;font-size:7px">${r.date.slice(5)}</td>`;});}
+  });
+  row2+='</tr>';
+  return row1+row2;
+}
+
+// ── 表格01 每日及每週測試總表（月覆核）──
 function printMgTable01(){
   const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
-  const biopsyRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='biopsy'&&r.date>=range.start&&r.date<=range.end);
-  const ph2dRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='ph2d'&&r.date>=range.start&&r.date<=range.end);
-  const ph3dRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='ph3d'&&r.date>=range.start&&r.date<=range.end);
-  const vendorRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='vendor'&&r.date>=range.start&&r.date<=range.end);
-  const allDates=[...new Set([...biopsyRecs,...ph2dRecs,...ph3dRecs,...vendorRecs].map(r=>r.date))].sort();
-  const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
-  let html=baseHeader('數位乳房攝影品保系統','表格01　每日及每週測試總表',range.label,reviewer);
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>Biopsy定位</th><th>假體2D</th><th>假體3D</th><th>原廠校正(週)</th><th>品保人員</th></tr></thead><tbody>`;
-  allDates.forEach(d=>{
-    const b=biopsyRecs.find(r=>r.date===d),p2=ph2dRecs.find(r=>r.date===d),p3=ph3dRecs.find(r=>r.date===d),v=vendorRecs.find(r=>r.date===d);
-    const staff=[b,p2,p3,v].filter(Boolean).map(r=>r.staff)[0]||'—';
-    html+=`<tr><td>${d}</td><td>${b?b.overall==='pass'?'P':'F':'—'}</td><td>${p2?p2.overall==='pass'?'P':'F':'—'}</td><td>${p3?p3.overall==='pass'?'P':'F':'—'}</td><td>${v?v.overall==='pass'?'P':'F':'—'}</td><td>${staff}</td></tr>`;
+  const eq=cfgEq();
+  const allWeekly=mgRecords.filter(r=>r.type==='mg-weekly'&&r.date>=range.start&&r.date<=range.end);
+  const bRecs=allWeekly.filter(r=>r.subtype==='biopsy').sort((a,b)=>a.date.localeCompare(b.date));
+  const p2Recs=allWeekly.filter(r=>r.subtype==='ph2d').sort((a,b)=>a.date.localeCompare(b.date));
+  const p3Recs=allWeekly.filter(r=>r.subtype==='ph3d').sort((a,b)=>a.date.localeCompare(b.date));
+  const vRecs=allWeekly.filter(r=>r.subtype==='vendor').sort((a,b)=>a.date.localeCompare(b.date));
+  const allDates=[...new Set(allWeekly.map(r=>r.date))].sort();
+  const mo=range.start.slice(0,7);
+  const reviewer=getMgReviewer(mo);
+
+  let html=monthlyBaseHeader('表格01','表格01 — 每日及每週測試總表',range.label,eq);
+  html+=`<table class="ptbl"><thead><tr>
+    <th>項目＼日期（筆次）</th>
+    ${allDates.map(d=>{
+      // 同日多筆：找最多筆的 subtype
+      const cnts=[bRecs,p2Recs,p3Recs,vRecs].map(arr=>arr.filter(r=>r.date===d).length);
+      const maxCnt=Math.max(...cnts,1);
+      return maxCnt>1?`<th colspan="${maxCnt}">${d.slice(5)}</th>`:`<th>${d.slice(5)}</th>`;
+    }).join('')}
+  </tr>
+  <tr><th>執行人員</th>${allDates.map(d=>{
+    const staffSet=[...new Set(allWeekly.filter(r=>r.date===d).map(r=>r.staff))];
+    return `<td>${staffSet.join('/')}</td>`;
+  }).join('')}</tr>
+  </thead><tbody>`;
+
+  // Biopsy
+  html+=`<tr><td class="left">GE：定位準確度 (biopsy當日)</td>`;
+  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.loc||'—'}</td>`).join(''):`<td>--</td>`;});
+  html+=`</tr>`;
+  html+=`<tr><td class="left">GE：切片針支撐架之準確度 (biopsy當日)</td>`;
+  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.needle||'—'}</td>`).join(''):`<td>--</td>`;});
+  html+=`</tr>`;
+  html+=`<tr><td class="left">Biopsy定位整體判定(P/F)</td>`;
+  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.overall==='pass'?'P':'F'}</td>`).join(''):`<td>--</td>`;});
+  html+=`</tr>`;
+  // 2D
+  [['假體影像品質-2D　纖維評分(P/F)','fiber'],['假體影像品質-2D　鈣化點群評分(P/F)','calc'],['假體影像品質-2D　腫塊物評分(P/F)','mass'],['假體影像品質-2D　假影評估','artifact'],['假體影像品質-2D　整體判定(P/F)','overall']].forEach(([label,key])=>{
+    html+=`<tr><td class="left">${label}</td>`;
+    allDates.forEach(d=>{const rs=p2Recs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—')}</td>`).join(''):`<td>--</td>`;});
+    html+=`</tr>`;
   });
-  html+=`</tbody></table></div>`;printDoc(html);
+  // 3D
+  [['假體影像品質-3D　纖維評分(P/F)','fiber'],['假體影像品質-3D　鈣化點群評分(P/F)','calc'],['假體影像品質-3D　腫塊物評分(P/F)','mass'],['假體影像品質-3D　整體判定(P/F)','overall']].forEach(([label,key])=>{
+    html+=`<tr><td class="left">${label}</td>`;
+    allDates.forEach(d=>{const rs=p3Recs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—')}</td>`).join(''):`<td>--</td>`;});
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+
+  // 備註（各筆）
+  const allNotes=allWeekly.filter(r=>r.note).map(r=>`${r.date}(${r.subtype})：${r.note}`);
+  html+=notesBlock(allNotes);
+  html+=monthReviewBlock(reviewer);
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
 }
 
-// ── 假體影像品質報表（附表2-01）──
+// ── 附表2-01 假體影像品質（月覆核）──
 function printMgPhantom(){
   const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
+  const eq=cfgEq();
   const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&(r.subtype==='ph2d'||r.subtype==='ph3d')&&r.date>=range.start&&r.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
   const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
-  let html=baseHeader('數位乳房攝影品保系統','附表2-01　假體影像品質',range.label,reviewer);
-  // 依日期分組
   const byDate={};recs.forEach(r=>{if(!byDate[r.date])byDate[r.date]={};byDate[r.date][r.subtype]=r;});
   const dates=Object.keys(byDate).sort();
-  // 檢查同月不同日多筆：若同月有多個 dates，需分欄處理
-  html+=`<table class="ptbl"><thead><tr><th>項目</th>${dates.map(d=>`<th colspan="2">${d}</th>`).join('')}</tr><tr><th></th>${dates.map(()=>'<th>2D</th><th>3D</th>').join('')}</tr></thead><tbody>`;
-  const rows=[['kVp','kvp'],['mAs','mas'],['AGD(mGy)','dose'],['窗寬','ww'],['窗高','wl'],['纖維','fiber'],['鈣化點群','calc'],['腫塊物','mass'],['假影','artifact'],['整體判定','overall']];
-  rows.forEach(([label,key])=>{
+
+  let html=monthlyBaseHeader('附表2-01','附表2-01　假體影像品質',range.label,eq);
+  html+=`<table class="ptbl"><thead>
+    <tr><th>項目</th>${dates.map(d=>`<th colspan="2">${d.slice(5)}</th>`).join('')}</tr>
+    <tr><th></th>${dates.map(()=>'<th>2D</th><th>3D</th>').join('')}</tr>
+  </thead><tbody>`;
+  [['kVp','kvp'],['mAs','mas'],['AGD(mGy)','dose'],['窗寬','ww'],['窗高','wl'],['纖維','fiber'],['鈣化點群','calc'],['腫塊物','mass'],['假影','artifact'],['整體判定','overall']].forEach(([label,key])=>{
     html+=`<tr><td class="left">${label}</td>`;
     dates.forEach(d=>{
       const r2=byDate[d].ph2d,r3=byDate[d].ph3d;
@@ -2016,119 +2114,411 @@ function printMgPhantom(){
     });
     html+='</tr>';
   });
-  html+=`</tbody></table></div>`;printDoc(html);
+  html+=`</tbody></table>`;
+  const notes=recs.filter(r=>r.note).map(r=>`${r.date}(${r.subtype==='ph2d'?'2D':'3D'})：${r.note}`);
+  html+=notesBlock(notes);
+  html+=monthReviewBlock(reviewer);
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
 }
 
-// ── 附表2-10A ──
+// ── 附表2-10A 原廠特定校正每週（月覆核）──
 function printMg2_10A(){
   const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
+  const eq=cfgEq();
   const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='vendor'&&r.date>=range.start&&r.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
   const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
-  let html=baseHeader('數位乳房攝影品保系統','附表2-10A　原廠特定校正及測試（每週）',range.label,reviewer);
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>flat field 2D</th><th>flat field Biopsy</th><th>flat field 3D</th><th>IQST</th><th>ACR纖維</th><th>ACR鈣化</th><th>ACR腫塊</th><th>整體</th><th>品保人員</th></tr></thead><tbody>`;
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.ff2d||'—'}</td><td>${r.ffBiopsy||'—'}</td><td>${r.ff3d||'—'}</td><td>${r.iqst||'—'}</td><td>${r.acrFiber??'—'}</td><td>${r.acrCalc??'—'}</td><td>${r.acrMass??'—'}</td><td>${r.overall==='pass'?'P':'F'}</td><td>${r.staff}</td></tr>`;});
-  html+=`</tbody></table></div>`;printDoc(html);
-}
+  const dates=[...new Set(recs.map(r=>r.date))].sort();
 
-// ── 表格02 每月及每半年測試總表（每年）──
-function printMgTable02(){
-  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;const months=Array.from({length:12},(_,i)=>`${yr}-${String(i+1).padStart(2,'0')}`);
-  let html=yearlyHeader(`表格02　每月及每半年測試總表（${yr}年）`);
-  const subtypes=['compress','visual','acq','rad','mvendor'];
-  const subLabel={compress:'壓迫厚度',visual:'目視檢查',acq:'擷像工作站',rad:'閱片工作站',mvendor:'原廠校正(月)'};
-  html+=`<table class="ptbl"><thead><tr><th>項目</th>${months.map(m=>`<th>${m.slice(5)}月</th>`).join('')}</tr></thead><tbody>`;
-  subtypes.forEach(sub=>{
-    html+=`<tr><td class="left">${subLabel[sub]}</td>`;
-    months.forEach(mo=>{const r=mgRecords.find(x=>x.type==='mg-monthly-item'&&x.subtype===sub&&x.date?.startsWith(mo));html+=`<td>${r?r.overall==='pass'?'P':'F':'—'}</td>`;});
+  let html=monthlyBaseHeader('附表2-10A','附表2-10A　原廠特定校正及測試（每週）',range.label,eq);
+  html+=`<table class="ptbl"><thead>
+    <tr><th>項目</th>${dates.map(d=>{const cnt=recs.filter(r=>r.date===d).length;return cnt>1?`<th colspan="${cnt}">${d.slice(5)}</th>`:`<th>${d.slice(5)}</th>`;}).join('')}</tr>
+    <tr><th>執行人員</th>${dates.map(d=>recs.filter(r=>r.date===d).map(r=>`<td>${r.staff}</td>`).join('')).join('')}</tr>
+  </thead><tbody>`;
+  [['flat field 2D','ff2d'],['flat field Biopsy','ffBiopsy'],['flat field 3D','ff3d'],['IQST測試','iqst'],['傳統ACR假體-biopsy 纖維','acrFiber'],['傳統ACR假體-biopsy 鈣化點群','acrCalc'],['傳統ACR假體-biopsy 腫塊物','acrMass'],['整體判定','overall']].forEach(([label,key])=>{
+    html+=`<tr><td class="left">${label}</td>`;
+    dates.forEach(d=>{recs.filter(r=>r.date===d).forEach(r=>{html+=`<td>${key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—')}</td>`;});});
     html+='</tr>';
   });
-  // 每半年
-  html+=`<tr><td class="left">壓迫力測試</td>`;
-  months.forEach(mo=>{const r=mgRecords.find(x=>x.type==='mg-semiannual'&&x.date?.startsWith(mo));const moN=parseInt(mo.slice(5));html+=`<td>${(moN===6||moN===12)?r?r.overall==='pass'?'P':'F':'未執行':'N/A'}</td>`;});
+  html+=`</tbody></table>`;
+  const notes=recs.filter(r=>r.note).map(r=>`${r.date}：${r.note}`);
+  html+=notesBlock(notes);
+  html+=monthReviewBlock(reviewer);
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
+}
+
+// ── 表格02 每月及每半年測試總表（每年，逐項覆核）──
+function printMgTable02(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const eq=cfgEq();
+  const months=Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0'));
+
+  // 每月的所有紀錄（含多筆）
+  const subTypes=['compress','visual','acq','rad','mvendor'];
+  const subLabel={compress:'壓迫厚度顯示準確性（附表2-03）',visual:'目視檢查（附表2-04）',acq:'擷像工作站品管（附表2-05）',rad:'放射科醫師閱片工作站品管左螢幕（附表2-06）',radR:'放射科醫師閱片工作站品管右螢幕（附表2-06）',mvendor:'AOP模式和訊雜比檢查－2D（附表2-10B）',mvendorB:'自動最佳化參數確認－3D（附表2-10B）',semi:'壓迫力測試（附表2-09、半年）'};
+
+  // 建立每月多筆資料
+  const byMonth={};
+  months.forEach(m=>{
+    const mo=`${yr}-${m}`;
+    byMonth[m]={};
+    subTypes.forEach(sub=>{
+      byMonth[m][sub]=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype===sub&&r.date?.startsWith(mo)).sort((a,b)=>a.date.localeCompare(b.date));
+    });
+    byMonth[m].semi=mgRecords.filter(r=>r.type==='mg-semiannual'&&r.date?.startsWith(mo)).sort((a,b)=>a.date.localeCompare(b.date));
+  });
+
+  // 計算每月最大筆數
+  const maxPerMonth={};
+  months.forEach(m=>{
+    const cnts=[...subTypes,'semi'].map(sub=>byMonth[m][sub].length||1);
+    maxPerMonth[m]=Math.max(...cnts);
+  });
+
+  let html=yearlyBaseHeader('表格02',`表格02 — 每月及每半年測試總表`,yr,eq);
+
+  // thead row1: 月份
+  let row1=`<tr><th rowspan="2">項目</th>`;
+  months.forEach(m=>{
+    const cnt=maxPerMonth[m];
+    row1+=`<td colspan="${cnt}" style="text-align:center;background:#e8e8e8;font-weight:bold">${parseInt(m)}月</td>`;
+  });
+  row1+='</tr>';
+  // thead row2: 日期
+  let row2='<tr>';
+  months.forEach(m=>{
+    // 取所有子類型中出現的日期
+    const allDates=[...new Set([...subTypes,'semi'].flatMap(sub=>byMonth[m][sub].map(r=>r.date)))].sort();
+    if(allDates.length===0){row2+=`<td style="background:#f0f0f0">—</td>`;}
+    else{
+      const cnt=maxPerMonth[m];
+      allDates.forEach(d=>{row2+=`<td style="background:#f0f0f0;font-size:7px">${d.slice(5)}</td>`;});
+      // 補空格
+      for(let i=allDates.length;i<cnt;i++)row2+=`<td style="background:#f0f0f0">—</td>`;
+    }
+  });
+  row2+='</tr>';
+
+  html+=`<table class="ptbl"><thead>${row1}${row2}</thead><tbody>`;
+
+  // 品保人員行
+  html+=`<tr><td class="left">品保人員</td>`;
+  months.forEach(m=>{
+    const allDates=[...new Set([...subTypes,'semi'].flatMap(sub=>byMonth[m][sub].map(r=>r.date)))].sort();
+    const cnt=maxPerMonth[m];
+    if(allDates.length===0){html+=`<td>--</td>`;}
+    else{
+      allDates.forEach(d=>{
+        const staff=[...subTypes,'semi'].flatMap(sub=>byMonth[m][sub].filter(r=>r.date===d).map(r=>r.staff));
+        html+=`<td>${[...new Set(staff)].join('/')||'--'}</td>`;
+      });
+      for(let i=allDates.length;i<cnt;i++)html+=`<td>--</td>`;
+    }
+  });
   html+=`</tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+
+  // 各子項目行
+  const rowDefs=[
+    {key:'compress',label:'壓迫厚度顯示準確性（附表2-03）',val:r=>r.overall==='pass'?'P':'F'},
+    {key:'visual',label:'目視檢查（附表2-04）',val:r=>r.overall==='pass'?'P':'F'},
+    {key:'acq',label:'擷像工作站品管（附表2-05）',val:r=>r.overall==='pass'?'P':'F'},
+    {key:'rad',label:'放射科醫師閱片工作站品管左螢幕（附表2-06）',val:r=>r.overallL==='pass'?'P':'F'},
+    {key:'rad',label:'放射科醫師閱片工作站品管右螢幕（附表2-06）',val:r=>r.overallR==='pass'?'P':'F'},
+    {key:'mvendor',label:'AOP模式和訊雜比檢查－2D（附表2-10B）',val:r=>r.aop2d||'—'},
+    {key:'mvendor',label:'自動最佳化參數確認－3D（附表2-10B）',val:r=>r.aop3d||'—'},
+    {key:'semi',label:'壓迫力測試（附表2-09、半年）',val:r=>{const moN=parseInt(r.date?.slice(5,7));return(moN===6||moN===12)?r.overall==='pass'?'P':'F':'N/A';}},
+  ];
+  rowDefs.forEach(({key,label,val})=>{
+    html+=`<tr><td class="left" style="font-size:7px">${label}</td>`;
+    months.forEach(m=>{
+      const recs=byMonth[m][key]||[];
+      const allDates=[...new Set([...subTypes,'semi'].flatMap(sub=>byMonth[m][sub].map(r=>r.date)))].sort();
+      const cnt=maxPerMonth[m];
+      if(allDates.length===0){html+=`<td>--</td>`;}
+      else{
+        allDates.forEach(d=>{
+          const r=recs.find(x=>x.date===d);
+          if(r){const moN=parseInt(d.slice(5,7));if(key==='semi'&&moN!==6&&moN!==12){html+=`<td>N/A</td>`;}else{html+=`<td>${val(r)}</td>`;}}
+          else html+=`<td>--</td>`;
+        });
+        for(let i=allDates.length;i<cnt;i++)html+=`<td>--</td>`;
+      }
+    });
+    html+=`</tr>`;
+  });
+
+  // 覆核人員/時間行
+  html+=`<tr><td class="left">覆核人員／覆核時間</td>`;
+  months.forEach(m=>{
+    const allDates=[...new Set([...subTypes,'semi'].flatMap(sub=>byMonth[m][sub].map(r=>r.date)))].sort();
+    const cnt=maxPerMonth[m];
+    if(allDates.length===0){html+=`<td>--</td>`;}
+    else{
+      allDates.forEach(d=>{
+        // 找該日期各子類型的逐項覆核
+        const revs=[...subTypes,'semi'].flatMap(sub=>(byMonth[m][sub]||[]).filter(r=>r.date===d&&r.itemReviewer));
+        if(revs.length){html+=`<td style="font-size:7px">${[...new Set(revs.map(r=>r.itemReviewer))].join('/')}<br>${revs[0].itemReviewTime?.slice(0,16)||''}</td>`;}
+        else{html+=`<td>--</td>`;}
+      });
+      for(let i=allDates.length;i<cnt;i++)html+=`<td>--</td>`;
+    }
+  });
+  html+=`</tr>`;
+  html+=`</tbody></table>`;
+
+  // 各月備註
+  const monthNotes=[];
+  months.forEach(m=>{
+    const allRecs=[...subTypes,'semi'].flatMap(sub=>byMonth[m][sub]);
+    const notes=allRecs.filter(r=>r.note).map(r=>`${r.date}(${r.subtype})：${r.note}`);
+    if(notes.length)monthNotes.push(`${parseInt(m)}月：${notes.join('；')}`);
+  });
+  html+=notesBlock(monthNotes);
+
+  // 逐項覆核
+  const allItemRecs=[...subTypes,'semi'].flatMap(sub=>mgRecords.filter(r=>(r.type==='mg-monthly-item'||r.type==='mg-semiannual')&&(r.subtype===sub)&&r.date>=start&&r.date<=end&&r.itemReviewer));
+  if(allItemRecs.length){
+    html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${allItemRecs.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`${r.date}（${r.subtype}）　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
+  }
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
+}
+
+// ── 年度單項報表共用函式 ──
+function printYearlyItem(yr,subtype,titleStr,buildRows,extraInfo){
+  const eq=cfgEq();const start=`${yr}-01-01`;const end=`${yr}-12-31`;
+  const months=Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0'));
+  const byMonth={};
+  months.forEach(m=>{
+    const mo=`${yr}-${m}`;
+    byMonth[m]=mgRecords.filter(r=>(r.type==='mg-monthly-item'||r.type==='mg-semiannual')&&r.subtype===subtype&&r.date?.startsWith(mo)).sort((a,b)=>a.date.localeCompare(b.date));
+  });
+  const maxPerMonth={};months.forEach(m=>{maxPerMonth[m]=Math.max(byMonth[m].length,1);});
+
+  let html=yearlyBaseHeader(titleStr,titleStr,yr,eq);
+  if(extraInfo)html+=`<div style="font-size:8px;margin-bottom:4px">${extraInfo}</div>`;
+
+  // thead
+  let row1=`<tr><th rowspan="2">項目</th>`;
+  months.forEach(m=>{const cnt=maxPerMonth[m];row1+=`<td colspan="${cnt}" style="text-align:center;background:#e8e8e8;font-weight:bold">${parseInt(m)}月</td>`;});
+  row1+='</tr>';
+  let row2='<tr>';
+  months.forEach(m=>{
+    if(byMonth[m].length===0)row2+=`<td style="background:#f0f0f0">—</td>`;
+    else{
+      byMonth[m].forEach(r=>{row2+=`<td style="background:#f0f0f0;font-size:7px">${r.date.slice(5)}</td>`;});
+      for(let i=byMonth[m].length;i<maxPerMonth[m];i++)row2+=`<td style="background:#f0f0f0">—</td>`;
+    }
+  });
+  row2+='</tr>';
+  html+=`<table class="ptbl"><thead>${row1}${row2}</thead><tbody>`;
+
+  // 品保人員行
+  html+=`<tr><td class="left">品保人員</td>`;
+  months.forEach(m=>{
+    if(byMonth[m].length===0)html+=`<td>--</td>`;
+    else{byMonth[m].forEach(r=>html+=`<td>${r.staff}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+  });
+  html+=`</tr>`;
+
+  // 自定資料行
+  html+=buildRows(byMonth,months,maxPerMonth);
+
+  // 整體判定行
+  html+=`<tr><td class="left">整體判定(P/F)</td>`;
+  months.forEach(m=>{
+    if(byMonth[m].length===0)html+=`<td>--</td>`;
+    else{byMonth[m].forEach(r=>html+=`<td>${r.overall==='pass'?'P':'F'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+  });
+  html+=`</tr>`;
+
+  // 覆核人員/時間行
+  html+=`<tr><td class="left">覆核人員</td>`;
+  months.forEach(m=>{
+    if(byMonth[m].length===0)html+=`<td>--</td>`;
+    else{byMonth[m].forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewer||'--'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+  });
+  html+=`</tr>`;
+  html+=`<tr><td class="left">覆核時間</td>`;
+  months.forEach(m=>{
+    if(byMonth[m].length===0)html+=`<td>--</td>`;
+    else{byMonth[m].forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewTime?.slice(0,16)||'--'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+  });
+  html+=`</tr>`;
+  html+=`</tbody></table>`;
+
+  // 備註
+  const allRecs=months.flatMap(m=>byMonth[m]);
+  const notes=allRecs.filter(r=>r.note).map(r=>`${r.date}：${r.note}`);
+  html+=notesBlock(notes);
+  // 逐項覆核意見
+  const revRecs=allRecs.filter(r=>r.itemReviewer);
+  if(revRecs.length){
+    html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${revRecs.map(r=>`${r.date}　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
+  }
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
 }
 
 // ── 附表2-03 壓迫厚度 ──
 function printMg2_03(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;const cp=cfgCp();
-  let html=yearlyHeader(`附表2-03　壓迫厚度顯示準確性（${yr}年）`);
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>壓迫板種類</th><th>物件實際厚度(cm)</th><th>顯示厚度(cm)</th><th>偏差(cm)</th><th>判定</th></tr></thead><tbody>`;
-  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='compress'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${cp.paddle}</td><td>${cp.actualThick}</td><td>${r.dispThick}</td><td>${r.diff>=0?'+':''}${r.diff?.toFixed(2)}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
-  if(recs.length===0) html+=`<tr><td colspan="7" style="text-align:center">本年度無紀錄</td></tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+  const cp=cfgCp();
+  printYearlyItem(yRange.yr,'compress','＜附表2-03＞ 壓迫厚度顯示準確性（每月）',(byMonth,months,maxPerMonth)=>{
+    let rows='';
+    [['壓迫板種類',r=>cp.paddle],['物件實際厚度(cm)',r=>cp.actualThick],['顯示厚度(cm)',r=>r.dispThick??'—'],['偏差(cm)',r=>(r.diff>=0?'+':'')+r.diff?.toFixed(2)]].forEach(([label,val])=>{
+      rows+=`<tr><td class="left">${label}</td>`;
+      months.forEach(m=>{if(byMonth[m].length===0)rows+=`<td>--</td>`;else{byMonth[m].forEach(r=>rows+=`<td>${val(r)}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)rows+=`<td>--</td>`;}});
+      rows+=`</tr>`;
+    });
+    return rows;
+  },`壓迫板：${cp.paddle}　實際厚度：${cp.actualThick} cm　壓迫力：${cp.forceKg} kg`);
 }
 
 // ── 附表2-04 目視檢查 ──
 function printMg2_04(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;
-  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='visual'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
-  let html=yearlyHeader(`附表2-04　目視檢查（${yr}年）`);
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>不合格項目</th><th>整體判定</th></tr></thead><tbody>`;
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td class="left">${r.fails&&r.fails.length>0?r.fails.join('；'):'全部合格'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
-  if(recs.length===0) html+=`<tr><td colspan="4" style="text-align:center">本年度無紀錄</td></tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+  printYearlyItem(yRange.yr,'visual','＜附表2-04＞ 目視檢查（每月）',(byMonth,months,maxPerMonth)=>{
+    let rows='';
+    MG_VISUAL_ITEMS.filter(x=>!x.na).forEach(item=>{
+      rows+=`<tr><td class="left" style="font-size:7.5px">${item.label.replace('*','')}</td>`;
+      months.forEach(m=>{if(byMonth[m].length===0)rows+=`<td>--</td>`;else{byMonth[m].forEach(r=>rows+=`<td>${r.items?.[item.key]||'—'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)rows+=`<td>--</td>`;}});
+      rows+=`</tr>`;
+    });
+    return rows;
+  });
 }
 
 // ── 附表2-05 擷像工作站 ──
 function printMg2_05(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;const sc=cfgSc();
-  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='acq'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
-  let html=yearlyHeader(`附表2-05　擷像工作站品管（${yr}年）`);
-  html+=`<div style="font-size:9px;margin-bottom:4px">廠牌：${sc.acqBrand}　型號：${sc.acqModel}　序號：${sc.acqSn}</div>`;
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>不合格項目</th><th>整體判定</th></tr></thead><tbody>`;
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td class="left">${r.fails&&r.fails.length>0?r.fails.join('；'):'全部合格'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
-  if(recs.length===0) html+=`<tr><td colspan="4" style="text-align:center">本年度無紀錄</td></tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+  const sc=cfgSc();
+  printYearlyItem(yRange.yr,'acq','＜附表2-05＞ 擷像工作站品管（每月）',(byMonth,months,maxPerMonth)=>{
+    let rows='';
+    MG_ACQ_ITEMS.forEach(item=>{
+      rows+=`<tr><td class="left" style="font-size:7.5px">${item.label.slice(0,30)}</td>`;
+      months.forEach(m=>{if(byMonth[m].length===0)rows+=`<td>--</td>`;else{byMonth[m].forEach(r=>rows+=`<td>${r.items?.[item.key]||'—'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)rows+=`<td>--</td>`;}});
+      rows+=`</tr>`;
+    });
+    return rows;
+  },`廠牌：${sc.acqBrand}　型號：${sc.acqModel}　序號：${sc.acqSn}`);
 }
 
 // ── 附表2-06 閱片工作站 ──
 function printMg2_06(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;const sc=cfgSc();
-  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='rad'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
-  let html=yearlyHeader(`附表2-06　閱片工作站品管（${yr}年）`);
-  html+=`<div style="font-size:9px;margin-bottom:4px">廠牌：${sc.radBrand}　型號：${sc.radModel}　左序號：${sc.radSnL}　右序號：${sc.radSnR}</div>`;
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>左螢幕</th><th>右螢幕</th><th>整體判定</th></tr></thead><tbody>`;
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.overallL==='pass'?'P':'F'}</td><td>${r.overallR==='pass'?'P':'F'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
-  if(recs.length===0) html+=`<tr><td colspan="5" style="text-align:center">本年度無紀錄</td></tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+  const sc=cfgSc();
+  const yr=yRange.yr;const eq=cfgEq();const start=`${yr}-01-01`;const end=`${yr}-12-31`;
+  const months=Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0'));
+  const byMonth={};
+  months.forEach(m=>{
+    const mo=`${yr}-${m}`;
+    byMonth[m]=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='rad'&&r.date?.startsWith(mo)).sort((a,b)=>a.date.localeCompare(b.date));
+  });
+  const maxPerMonth={};months.forEach(m=>{maxPerMonth[m]=Math.max(byMonth[m].length,1);});
+
+  let html=yearlyBaseHeader(`＜附表2-06＞ 閱片工作站品管（每月）`,`＜附表2-06＞ 放射科醫師閱片工作站品管（每月）`,yr,eq);
+  html+=`<div style="font-size:8px;margin-bottom:4px">廠牌：${sc.radBrand}　型號：${sc.radModel}　左序號：${sc.radSnL}　右序號：${sc.radSnR}</div>`;
+
+  let row1=`<tr><th rowspan="2">項目</th>`;
+  months.forEach(m=>{const cnt=maxPerMonth[m];row1+=`<td colspan="${cnt}" style="text-align:center;background:#e8e8e8;font-weight:bold">${parseInt(m)}月</td>`;});
+  row1+='</tr>';
+  let row2='<tr>';
+  months.forEach(m=>{
+    if(byMonth[m].length===0)row2+=`<td style="background:#f0f0f0">—</td>`;
+    else{byMonth[m].forEach(r=>{row2+=`<td style="background:#f0f0f0;font-size:7px">${r.date.slice(5)}</td>`;});for(let i=byMonth[m].length;i<maxPerMonth[m];i++)row2+=`<td style="background:#f0f0f0">—</td>`;}
+  });
+  row2+='</tr>';
+  html+=`<table class="ptbl"><thead>${row1}${row2}</thead><tbody>`;
+
+  html+=`<tr><td class="left">品保人員</td>`;
+  months.forEach(m=>{if(byMonth[m].length===0)html+=`<td>--</td>`;else{byMonth[m].forEach(r=>html+=`<td>${r.staff}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}}); html+=`</tr>`;
+
+  // 左右螢幕各評估項目
+  MG_RAD_ITEMS.filter(x=>!x.isScore).forEach(item=>{
+    ['L','R'].forEach(side=>{
+      const sideLabel=side==='L'?'左螢幕':'右螢幕';
+      html+=`<tr><td class="left" style="font-size:7.5px">${sideLabel}　${item.label.slice(0,25)}</td>`;
+      months.forEach(m=>{
+        if(byMonth[m].length===0)html+=`<td>--</td>`;
+        else{byMonth[m].forEach(r=>{const items=side==='L'?r.itemsL:r.itemsR;html+=`<td>${items?.[item.key]||'—'}</td>`;});for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+      });
+      html+=`</tr>`;
+    });
+  });
+  // 左右整體判定
+  ['L','R'].forEach(side=>{
+    html+=`<tr><td class="left">${side==='L'?'左':'右'}螢幕整體判定(P/F)</td>`;
+    months.forEach(m=>{if(byMonth[m].length===0)html+=`<td>--</td>`;else{byMonth[m].forEach(r=>html+=`<td>${(side==='L'?r.overallL:r.overallR)==='pass'?'P':'F'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}}); html+=`</tr>`;
+  });
+  html+=`<tr><td class="left">覆核人員</td>`;
+  months.forEach(m=>{if(byMonth[m].length===0)html+=`<td>--</td>`;else{byMonth[m].forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewer||'--'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}}); html+=`</tr>`;
+  html+=`<tr><td class="left">覆核時間</td>`;
+  months.forEach(m=>{if(byMonth[m].length===0)html+=`<td>--</td>`;else{byMonth[m].forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewTime?.slice(0,16)||'--'}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}}); html+=`</tr>`;
+  html+=`</tbody></table>`;
+
+  const allRecs=months.flatMap(m=>byMonth[m]);
+  html+=notesBlock(allRecs.filter(r=>r.note).map(r=>`${r.date}：${r.note}`));
+  const revRecs=allRecs.filter(r=>r.itemReviewer);
+  if(revRecs.length)html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${revRecs.map(r=>`${r.date}　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
 }
 
 // ── 附表2-10B 原廠特定校正每月 ──
 function printMg2_10B(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;
-  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='mvendor'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
-  let html=yearlyHeader(`附表2-10B　原廠特定校正及測試（每月）（${yr}年）`);
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>AOP 2D</th><th>AOP 3D</th><th>整體判定</th></tr></thead><tbody>`;
-  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.aop2d||'—'}</td><td>${r.aop3d||'—'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
-  if(recs.length===0) html+=`<tr><td colspan="5" style="text-align:center">本年度無紀錄</td></tr>`;
-  html+=`</tbody></table></div>`;printDoc(html);
+  printYearlyItem(yRange.yr,'mvendor','＜附表2-10B＞ 原廠特定校正及測試（每月）',(byMonth,months,maxPerMonth)=>{
+    let rows='';
+    [['AOP模式和訊雜比檢查－2D',r=>r.aop2d||'—'],['自動最佳化參數確認－3D',r=>r.aop3d||'—']].forEach(([label,val])=>{
+      rows+=`<tr><td class="left">${label}</td>`;
+      months.forEach(m=>{if(byMonth[m].length===0)rows+=`<td>--</td>`;else{byMonth[m].forEach(r=>rows+=`<td>${val(r)}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)rows+=`<td>--</td>`;}});
+      rows+=`</tr>`;
+    });
+    return rows;
+  });
 }
 
 // ── 附表2-09 壓迫力測試（僅6月/12月）──
 function printMg2_09(){
   const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
-  const{yr,start,end}=yRange;const tl=cfgTl();
-  // 僅取6月及12月紀錄
-  const recs=mgRecords.filter(r=>r.type==='mg-semiannual'&&r.date>=start&&r.date<=end).filter(r=>{const mo=parseInt(r.date?.slice(5,7));return mo===6||mo===12;}).sort((a,b)=>a.date.localeCompare(b.date));
-  let html=yearlyHeader(`附表2-09　壓迫力測試（${yr}年）`);
-  html+=`<div style="font-size:9px;margin-bottom:4px">量測工具：${tl.tool}　顯示單位：${tl.unit}</div>`;
-  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>手動微調壓迫力</th><th>電動驅動初始壓迫力</th><th>取像過程壓迫力</th><th>整體判定</th></tr></thead><tbody>`;
-  // 固定顯示6月、12月兩列，即使無紀錄也列出
+  const{yr}=yRange;const eq=cfgEq();const tl=cfgTl();
+  const start=`${yr}-01-01`;const end=`${yr}-12-31`;
+  const recs=mgRecords.filter(r=>r.type==='mg-semiannual'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+
+  let html=yearlyBaseHeader('＜附表2-09＞ 壓迫力測試（半年）',`＜附表2-09＞ 壓迫力測試（每半年）`,yr,eq);
+  html+=`<div style="font-size:8px;margin-bottom:4px">量測工具：${tl.tool}　顯示單位：${tl.unit}　（僅6月及12月執行）</div>`;
+
   const targets=[`${yr}-06`,`${yr}-12`];
-  targets.forEach(mo=>{
-    const r=recs.find(x=>x.date?.startsWith(mo));
-    if(r) html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.manual2d} daN</td><td>${r.motorN} daN</td><td>${r.p3}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;
-    else html+=`<tr><td>${mo}</td><td colspan="5" style="text-align:center;color:#aaa">尚未執行</td></tr>`;
+  const cols=targets.map(mo=>({mo,recs:recs.filter(r=>r.date?.startsWith(mo))}));
+
+  let row1=`<tr><th rowspan="2">項目</th>`;
+  cols.forEach(c=>{const cnt=Math.max(c.recs.length,1);row1+=`<td colspan="${cnt}" style="text-align:center;background:#e8e8e8;font-weight:bold">${parseInt(c.mo.slice(5))}月</td>`;});
+  row1+='</tr>';
+  let row2='<tr>';
+  cols.forEach(c=>{if(c.recs.length===0)row2+=`<td style="background:#f0f0f0">尚未執行</td>`;else c.recs.forEach(r=>{row2+=`<td style="background:#f0f0f0;font-size:7px">${r.date.slice(5)}</td>`;});});
+  row2+='</tr>';
+  html+=`<table class="ptbl"><thead>${row1}${row2}</thead><tbody>`;
+
+  html+=`<tr><td class="left">品保人員</td>`;
+  cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td>${r.staff}</td>`);}); html+=`</tr>`;
+  [['手動微調壓迫力（≥11.1 daN）',r=>`${r.manual2d} ${tl.unit}`],['電動驅動初始壓迫力（11.1~20.2 daN）',r=>`${r.motorN} ${tl.unit}`],['取像過程壓迫力維持',r=>r.p3],['整體判定(P/F)',r=>r.overall==='pass'?'P':'F']].forEach(([label,val])=>{
+    html+=`<tr><td class="left">${label}</td>`;
+    cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td>${val(r)}</td>`);});
+    html+=`</tr>`;
   });
-  html+=`</tbody></table></div>`;printDoc(html);
+  html+=`<tr><td class="left">覆核人員</td>`;
+  cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewer||'--'}</td>`);}); html+=`</tr>`;
+  html+=`<tr><td class="left">覆核時間</td>`;
+  cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewTime?.slice(0,16)||'--'}</td>`);}); html+=`</tr>`;
+  html+=`</tbody></table>`;
+
+  html+=notesBlock(recs.filter(r=>r.note).map(r=>`${r.date}：${r.note}`));
+  const revRecs=recs.filter(r=>r.itemReviewer);
+  if(revRecs.length)html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${revRecs.map(r=>`${r.date}　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
+  html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
+  printDoc(html);
 }
 // ══ SETTINGS POPULATE ══
 function populateMgEquipSettings(){const eq=mgCfg.equip||DEF_MG_EQUIP;['brand','model','room','phantom','phantomSn'].forEach(k=>{const el=document.getElementById('mg-cfg-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=eq[k]||'';});}
