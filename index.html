@@ -581,7 +581,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
         <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">測試圖像參考</div>
         <div id="rad-test-img-content" style="background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px"></div>
       </div>
-      <div style="overflow-x:auto"><table class="ctbl" style="table-layout:fixed;width:100%;min-width:360px"><thead><tr><th style="text-align:left;padding-left:10px;width:18%">類別</th><th style="text-align:left;width:42%">評估項目</th><th style="width:20%">左螢幕</th><th style="width:20%">右螢幕</th></tr></thead>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl" style="min-width:520px;width:100%;table-layout:fixed"><thead><tr><th style="text-align:left;padding-left:10px;width:80px">類別</th><th style="text-align:left;width:220px">評估項目</th><th style="width:110px">左螢幕</th><th style="width:110px">右螢幕</th></tr></thead>
       <tbody id="mg-rad-tbody"></tbody></table></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
         <div id="mgm-rad-l-rbar" class="rbar pend"><div><div class="rl">左螢幕</div><div class="rv" id="mgm-rad-l-txt">待判定</div></div><span id="mgm-rad-l-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
@@ -627,12 +627,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   </div></div>
   <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-09　壓迫力測試</h3></div>
     <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>判定標準：(1) 手動微調壓迫力須≥25磅（11.1 daN）；(2) 電動驅動初始壓迫最大壓迫力須介於25~45磅之間</div>
-    <div style="overflow-x:auto"><table class="ctbl" style="table-layout:fixed;width:100%">
-      <thead><tr><th style="text-align:left;padding-left:10px;width:36%">測試項目</th><th style="width:22%">2D模式數值</th><th style="width:28%">2D模式判定(自動)</th><th style="width:14%">DBT外加</th></tr></thead>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl" style="min-width:560px;width:100%;table-layout:fixed">
+      <thead><tr><th style="text-align:left;padding-left:10px;width:200px">測試項目</th><th style="width:110px">2D模式數值</th><th style="width:170px">2D模式判定(自動)</th><th style="width:80px">DBT外加</th></tr></thead>
       <tbody>
-        <tr><td style="text-align:left;padding-left:10px;word-break:keep-all;white-space:normal">1. 手動微調壓迫力</td><td><input type="number" id="mgs-manual2d" style="width:80px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p1-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
-        <tr><td style="text-align:left;padding-left:10px;word-break:keep-all;white-space:normal">2. 電動驅動之初始壓迫最大壓迫力</td><td><input type="number" id="mgs-motor2d" style="width:80px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p2-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
-        <tr><td style="text-align:left;padding-left:10px;word-break:keep-all;white-space:normal">3. 整個取像過程中皆可維持足夠的壓迫力</td><td></td><td><div class="pf-wrap"><input type="radio" name="mgs-p3-2d" id="mgs-p3-2dp" value="P" onchange="evalSemiannual()"><label for="mgs-p3-2dp">P</label><input type="radio" name="mgs-p3-2d" id="mgs-p3-2df" value="F" onchange="evalSemiannual()"><label for="mgs-p3-2df">F</label></div></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+        <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">1. 手動微調壓迫力</td><td style="text-align:center"><input type="number" id="mgs-manual2d" style="width:85px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p1-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+        <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">2. 電動驅動之初始壓迫最大壓迫力</td><td style="text-align:center"><input type="number" id="mgs-motor2d" style="width:85px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p2-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+        <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">3. 整個取像過程中皆可維持足夠的壓迫力</td><td></td><td><div class="pf-wrap"><input type="radio" name="mgs-p3-2d" id="mgs-p3-2dp" value="P" onchange="evalSemiannual()"><label for="mgs-p3-2dp">P</label><input type="radio" name="mgs-p3-2d" id="mgs-p3-2df" value="F" onchange="evalSemiannual()"><label for="mgs-p3-2df">F</label></div></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
       </tbody>
     </table></div>
     <div id="mgs-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
@@ -1355,7 +1355,7 @@ function initMgRadTable(){
   const seen={};
   tb.innerHTML=MG_RAD_ITEMS.map(item=>{
     let cc2='';
-    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 8px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;word-break:keep-all;white-space:normal">${item.cat}</td>`;}
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 8px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;white-space:normal;word-break:keep-all">${item.cat}</td>`;}
     if(item.isScore){
       return `<tr>${cc2}<td style="text-align:left;font-size:12px;padding:8px 10px">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
         <td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">
