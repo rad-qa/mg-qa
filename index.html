@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a6fc4;--blue-l:#e8f1fb;--blue-m:#4a90d9;
+  --teal:#0e8a7a;--teal-l:#e4f5f3;
+  --red:#c0392b;--red-l:#fdecea;
+  --green:#1e8449;--green-l:#e8f8ee;
+  --amber:#b7770d;--amber-l:#fef6e4;
+  --purple:#6c3aab;--purple-l:#f0eafa;
+  --pink:#a0295a;--pink-l:#fce8f0;--pink-m:#d4608a;
+  --gray:#5a6472;--gray-l:#f4f6f9;
+  --border:#d1d9e6;
+  --sidebar:#1a2744;--sidebar-t:#b8c8e8;--sidebar-a:#4a90d9
+}
+body{font-family:system-ui,sans-serif;font-size:14px;color:#2c3e50;background:var(--gray-l);min-height:100vh}
+.app{display:flex;min-height:100vh}
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#7b0d2e,#a0295a,#c0392b);display:flex;align-items:center;justify-content:center;z-index:999}
+.login-box{background:#fff;border-radius:16px;padding:36px 40px;width:400px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.lb-logo{text-align:center;margin-bottom:22px}
+.lb-logo .icon{width:54px;height:54px;background:linear-gradient(135deg,#a0295a,#d4608a);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:9px}
+.lb-logo .icon svg{width:28px;height:28px;fill:#fff}
+.lb-logo h2{font-size:18px;font-weight:700;color:#7b0d2e;margin-bottom:3px}
+.lb-logo p{font-size:12px;color:var(--gray)}
+.login-err{background:var(--red-l);color:var(--red);border:1px solid #f0b8b3;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:12px;display:none}
+.login-hint{font-size:11.5px;color:#8a6070;background:#fdf0f5;border-radius:7px;padding:9px 12px;margin-bottom:14px;line-height:1.9;border:1px solid #f0cad8}
+.login-hint strong{color:var(--pink)}
+.sidebar{width:210px;background:var(--sidebar);flex-shrink:0;display:flex;flex-direction:column}
+.sl-logo{padding:16px 14px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sl-logo .li{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.sl-logo .li svg{width:17px;height:17px;fill:#fff}
+.sl-logo h1{font-size:12px;font-weight:600;color:#fff;line-height:1.4}
+.sl-logo p{font-size:11px;color:var(--sidebar-t)}
+.sl-sec{padding:13px 10px 5px;font-size:10px;font-weight:600;color:rgba(184,200,232,.4);letter-spacing:.08em}
+.nav-btn{display:flex;align-items:center;gap:7px;width:calc(100% - 12px);margin:2px 6px;padding:8px 11px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--sidebar-t);border-radius:7px;text-align:left;position:relative}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-btn.active{background:var(--sidebar-a);color:#fff;font-weight:500}
+.nav-btn .ni{width:15px;height:15px;flex-shrink:0}
+.nav-badge{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#e74c3c;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center}
+.sl-bot{padding:10px}
+.logout-btn{display:flex;align-items:center;gap:6px;width:100%;padding:8px 12px;border:none;background:rgba(255,255,255,.06);cursor:pointer;font-size:12px;color:var(--sidebar-t);border-radius:7px}
+.logout-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.main{flex:1;padding:20px 24px;overflow-y:auto;max-width:1000px}
+.page{display:none}.page.active{display:block}
+.app-topbar{background:#fff;border-bottom:1px solid var(--border);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;margin:-20px -24px 18px}
+.atb-sys{font-size:12px;color:var(--gray);display:flex;align-items:center;gap:6px}
+.atb-sys span{font-weight:600;color:#1a2744}
+.atb-user{display:flex;align-items:center;gap:8px}
+.atb-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+.atb-name{font-size:13px;font-weight:600;color:#1a2744}
+.atb-role{font-size:11px;color:var(--gray)}
+.ph{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--pink-l)}
+.ph-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-icon svg{width:18px;height:18px;fill:#fff}
+.ph-mg{background:linear-gradient(135deg,#a0295a,#d4608a)}
+.ph h2{font-size:19px;font-weight:600;color:#1a2744}
+.ph p{font-size:12px;color:var(--gray);margin-top:1px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-hd{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid #eef1f6}
+.card-hd .dot{width:4px;height:18px;border-radius:2px}
+.dot-pk{background:var(--pink)}.dot-b{background:var(--blue)}.dot-t{background:var(--teal)}.dot-p{background:var(--purple)}.dot-g{background:var(--green)}.dot-a{background:var(--amber)}
+.card-hd h3{font-size:14px;font-weight:600;color:#1a2744}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.dash-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.dash-stat .ds-l{font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.dash-stat .ds-v{font-size:26px;font-weight:700}
+.dash-stat .ds-sub{font-size:12px;color:var(--gray);margin-top:3px}
+.ds-blue .ds-v{color:var(--blue)}.ds-green .ds-v{color:var(--green)}.ds-red .ds-v{color:var(--red)}.ds-amber .ds-v{color:var(--amber)}.ds-pink .ds-v{color:var(--pink)}
+.room-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.room-card h4{font-size:13px;font-weight:600;color:#1a2744;margin-bottom:10px}
+.room-status-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f2f6;font-size:13px}
+.room-status-row:last-child{border-bottom:none}
+.alert-list{display:flex;flex-direction:column;gap:7px}
+.alert-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:9px;font-size:13px}
+.alert-fail{background:var(--red-l);border:1px solid #f0b8b3;color:var(--red)}
+.alert-warn{background:var(--amber-l);border:1px solid #f0d080;color:var(--amber)}
+.alert-ok{background:var(--green-l);border:1px solid #a8dbbf;color:var(--green)}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:11px;margin-bottom:11px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:11.5px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=number],input[type=date],input[type=month],input[type=password],input[type=email],select,textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;color:#2c3e50;background:#fff;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(160,41,90,.1)}
+.readonly-field{padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;background:#f7f9fc;color:#2c3e50;font-weight:500}
+.ib{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:8px;font-size:12.5px;margin-bottom:12px;border:1px solid}
+.ib-pink{background:var(--pink-l);color:var(--pink);border-color:#e8b0c8}
+.ib-amber{background:var(--amber-l);color:var(--amber);border-color:#f0d080}
+.ib-blue{background:var(--blue-l);color:var(--blue);border-color:#b8d4f0}
+.ib-green{background:var(--green-l);color:var(--green);border-color:#a8dbbf}
+.ib svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.ctbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.ctbl th{background:#f0f4fa;padding:8px;font-weight:600;font-size:12px;color:#3a4a6a;text-align:center;border-bottom:1px solid var(--border)}
+.ctbl td{padding:9px 7px;border-bottom:1px solid #eef1f6;text-align:center;vertical-align:middle}
+.ctbl tr:last-child td{border-bottom:none}
+.ctbl tr:hover td{background:#fafbff}
+.pf-wrap{display:flex;gap:4px;justify-content:center}
+.pf-wrap input[type=radio]{display:none}
+.pf-wrap label{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);color:var(--gray);background:#f7f9fc;transition:all .12s}
+.pf-wrap input[value="P"]:checked+label{background:var(--green-l);color:var(--green);border-color:#7dce9e}
+.pf-wrap input[value="F"]:checked+label{background:var(--red-l);color:var(--red);border-color:#f0a09a}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.bp{background:var(--green-l);color:var(--green)}.bf{background:var(--red-l);color:var(--red)}.bn{background:#f0f2f5;color:#7a8699}.bw{background:var(--amber-l);color:var(--amber)}.bpu{background:var(--purple-l);color:var(--purple)}.bpk{background:var(--pink-l);color:var(--pink)}
+.rbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;margin-top:10px;border:1px solid}
+.rbar.pass{background:var(--green-l);border-color:#9fd0b8}.rbar.fail{background:var(--red-l);border-color:#f0b0aa}.rbar.pend{background:var(--gray-l);border-color:var(--border)}
+.rbar .rl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.rbar.pass .rl{color:var(--green)}.rbar.fail .rl{color:var(--red)}.rbar.pend .rl{color:var(--gray)}
+.rbar .rv{font-size:13px;font-weight:600;margin-top:2px}
+.tab-confirm-box{background:#f7f9fc;border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:10px}
+.tab-confirm-box.confirmed{background:var(--green-l);border-color:#9fd0b8}
+.confirm-chk-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.confirm-chk-row input[type=checkbox]{width:17px;height:17px;flex-shrink:0;accent-color:var(--pink);cursor:pointer}
+.confirm-chk-row label{font-size:13.5px;color:#1a2744;font-weight:500;cursor:pointer}
+.confirm-stamp{font-size:12.5px;color:var(--green);font-weight:500;padding:7px 10px;background:#fff;border:1px solid #9fd0b8;border-radius:7px;margin-bottom:8px;display:none}
+.confirm-stamp.show{display:block}
+.btn{padding:8px 16px;border-radius:8px;font-size:13.5px;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:#2c3e50;font-weight:500;transition:all .12s;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:var(--gray-l)}
+.btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}.btn-p:hover{background:#155fad}
+.btn-g{background:var(--green);color:#fff;border-color:var(--green)}.btn-g:hover{background:#196a3a}
+.btn-r{background:var(--red);color:#fff;border-color:var(--red)}.btn-r:hover{background:#a93226}
+.btn-pu{background:var(--purple);color:#fff;border-color:var(--purple)}.btn-pu:hover{background:#5a2f8e}
+.btn-pk{background:var(--pink);color:#fff;border-color:var(--pink)}.btn-pk:hover{background:#882048}
+.btn-teal{background:var(--teal);color:#fff;border-color:var(--teal)}.btn-teal:hover{background:#0a6b5e}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+.stab-bar{display:flex;gap:4px;background:#f0f4fa;border-radius:9px;padding:3px;margin-bottom:16px;width:fit-content;flex-wrap:wrap}
+.stab{padding:6px 16px;border-radius:7px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--gray);font-weight:500}
+.stab.active{background:#fff;color:var(--pink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.mg-itab-bar{display:flex;gap:3px;background:#fce8f0;border-radius:8px;padding:3px;margin-bottom:14px;flex-wrap:wrap}
+.mg-itab{padding:5px 13px;border-radius:6px;font-size:12.5px;cursor:pointer;border:none;background:none;color:#8a3a5a;font-weight:500}
+.mg-itab.active{background:#fff;color:var(--pink);box-shadow:0 1px 4px rgba(0,0,0,.1);font-weight:600}
+.utbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.utbl th{background:#f0f4fa;padding:9px 11px;text-align:left;font-size:12px;font-weight:600;color:#3a4a6a;border-bottom:1px solid var(--border)}
+.utbl td{padding:9px 11px;border-bottom:1px solid #f0f2f6;vertical-align:middle}
+.utbl tr:hover td{background:#fafbff}
+.role-admin{background:var(--purple-l);color:var(--purple);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500}
+.role-user{background:var(--blue-l);color:var(--blue);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500}
+.notify-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.notify-tbl th{background:#f0f4fa;padding:9px 12px;text-align:center;font-size:12px;font-weight:600;color:#3a4a6a;border:1px solid var(--border)}
+.notify-tbl th:first-child{text-align:left}
+.notify-tbl td{padding:8px 12px;border:1px solid #eef1f6;text-align:center;vertical-align:middle}
+.notify-tbl td:first-child{text-align:left;font-weight:500}
+.notify-tbl input[type=email]{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px}
+.notify-tbl input[type=checkbox]{width:15px;height:15px;accent-color:var(--pink);cursor:pointer}
+.ttab-bar{display:flex;gap:4px;background:#f0f4fa;border-radius:8px;padding:3px;width:fit-content;margin-bottom:13px}
+.ttab{padding:6px 16px;border-radius:7px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--gray);font-weight:500}
+.ttab.active{background:#fff;color:var(--pink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.met-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px}
+.met{padding:11px 13px;border-radius:10px;border:1px solid var(--border)}
+.met .ml{font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.met .mv{font-size:21px;font-weight:700}
+.met.mpk{background:var(--pink-l);border-color:#e8b0c8}.met.mpk .mv{color:var(--pink)}
+.met.mb{background:var(--blue-l);border-color:#b8d4f0}.met.mb .mv{color:var(--blue)}
+.met.mg{background:var(--green-l);border-color:#a8dbbf}.met.mg .mv{color:var(--green)}
+.met.mr{background:var(--red-l);border-color:#f0b8b3}.met.mr .mv{color:var(--red)}
+.chart-wrap{position:relative;width:100%;height:200px}
+.info-note{font-size:12px;color:var(--gray);background:var(--gray-l);border-radius:7px;padding:8px 12px;margin-top:8px;border:1px solid var(--border)}
+.hf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.htbl{width:100%;border-collapse:collapse;font-size:13px}
+.htbl th{background:#f0f4fa;padding:9px 12px;text-align:left;font-size:12px;font-weight:600;color:#3a4a6a;border-bottom:1px solid var(--border)}
+.htbl td{padding:8px 12px;border-bottom:1px solid #f0f2f6;vertical-align:middle}
+.htbl tr:hover td{background:#fafbff}
+.month-review-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.mri-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mri-title{font-size:14px;font-weight:600;color:#1a2744}
+.mri-stats{display:flex;gap:10px;font-size:12.5px;color:var(--gray)}
+.preview-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.preview-tbl th{background:#f0f4fa;padding:6px 8px;text-align:center;font-weight:600;font-size:11px;color:#3a4a6a;border:1px solid var(--border)}
+.preview-tbl td{padding:5px 8px;border:1px solid #eef1f6;text-align:center}
+.opinion-wrap{display:flex;gap:8px;margin-bottom:10px}
+.opinion-wrap input[type=radio]{display:none}
+.opinion-wrap label{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);color:var(--gray);background:#f7f9fc;transition:all .12s}
+.opinion-wrap input:checked+label{background:var(--purple-l);color:var(--purple);border-color:#b8a0e8}
+.mg-score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.mg-score-card{background:var(--pink-l);border:1.5px solid #e8b0c8;border-radius:10px;padding:12px;text-align:center}
+.mg-score-card label{font-size:11px;font-weight:700;color:var(--pink);display:block;margin-bottom:6px}
+.mg-score-card input{width:80px;text-align:center;padding:6px;border:1.5px solid #e8b0c8;border-radius:7px;font-size:16px;font-weight:700;color:var(--pink);background:#fff}
+.mg-score-card .req{font-size:10px;color:#7a3a5a;margin-top:4px}
+.mg-hint-box{background:var(--pink-l);border:1.5px solid #e8b0c8;border-radius:10px;padding:14px;margin-bottom:13px}
+.mg-hint-box h4{font-size:12px;font-weight:700;color:var(--pink);margin-bottom:8px}
+.mg-hint-box ol{padding-left:18px;font-size:13px;color:#5a2040;line-height:2}
+.print-btn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.print-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.print-card .pc-title{font-size:13.5px;font-weight:600;color:#1a2744}
+.print-card .pc-desc{font-size:12px;color:var(--gray)}
+.pc-tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.tag-monthly{background:var(--blue-l);color:var(--blue)}
+.tag-yearly{background:var(--purple-l);color:var(--purple)}
+.tag-semi{background:var(--teal-l);color:var(--teal)}
+.dup-detail{background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.8}
+.toast{position:fixed;bottom:22px;right:22px;padding:13px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:400;box-shadow:0 4px 18px rgba(0,0,0,.16);transform:translateY(60px);opacity:0;transition:all .25s;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.tok{background:var(--green);color:#fff}.toast.terr{background:var(--red);color:#fff}.toast.twarn{background:var(--amber);color:#fff}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:300}
+.modal-bg.open{display:flex}
+.mbox{background:#fff;border-radius:14px;padding:24px;width:620px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
+.mbox h3{font-size:16px;font-weight:600;color:#1a2744;margin-bottom:14px}
+.review-section{background:var(--gray-l);border-radius:10px;padding:14px;margin-top:12px;border:1px solid var(--border)}
+.review-section h4{font-size:13px;font-weight:600;color:#1a2744;margin-bottom:10px}
+.rec-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:13px;line-height:1.8;margin-bottom:12px}
+.rec-section-title{font-size:12px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.rec-fail-list{background:var(--red-l);border:1px solid #f0b8b3;border-radius:7px;padding:8px 12px;font-size:12.5px;color:var(--red);margin-top:4px}
+.review-opinion-box{background:var(--purple-l);border:1px solid #b8a0e8;border-radius:7px;padding:8px 12px;font-size:12.5px;color:var(--purple);margin-top:6px}
+/* Sheets sync status */
+.sync-status{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:8px;font-size:12.5px;margin-top:8px}
+.sync-ok{background:var(--green-l);color:var(--green);border:1px solid #a8dbbf}
+.sync-err{background:var(--red-l);color:var(--red);border:1px solid #f0b8b3}
+.sync-ing{background:var(--amber-l);color:var(--amber);border:1px solid #f0d080}
+.sheets-url-wrap{display:flex;gap:8px;align-items:flex-end}
+.sheets-url-wrap input{flex:1}
+@page{margin:1.2cm}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #login-screen,.sidebar,.btn-row,.btn,.toast,.modal-bg,.app-topbar,.ph,nav,.mg-itab-bar,.stab-bar{display:none!important}
+  html,body,.app,.main{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:#fff!important}
+  .page{display:none!important}
+  #print-area{display:block!important}
+  .print-wrap{font-family:system-ui,sans-serif;font-size:9px;color:#000}
+  .print-h1{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px}
+  .print-h2{text-align:center;font-size:11px;margin-bottom:6px}
+  .print-meta{font-size:9px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #ccc;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+  .ptbl{width:100%;border-collapse:collapse;font-size:7.5px;margin-bottom:5px}
+  .ptbl th,.ptbl td{border:1px solid #888;padding:2px 3px;text-align:center}
+  .ptbl th{background:#e8e8e8;font-weight:bold}
+  .ptbl td.left{text-align:left}
+  .print-notes{margin-top:6px;font-size:8px;border:1px solid #aaa;padding:5px 7px}
+  .print-notes h4{font-weight:bold;margin-bottom:3px}
+  .print-review{margin-top:6px;font-size:8px;border:1px solid #aaa;padding:5px 7px;background:#f9f9f9}
+  .print-opinion{margin-top:4px;font-size:8px;border:1px solid #c8a0e8;padding:5px 7px;background:#f5eefa}
+  .print-time{font-size:7.5px;color:#888;text-align:right;margin-top:6px}
+}
+#print-area{display:none}
+@media(max-width:640px){
+  .sidebar{width:100%;flex-direction:row;overflow-x:auto;padding:7px}
+  .sl-logo,.sl-sec,.sl-bot{display:none}
+  .app{flex-direction:column}.main{padding:12px}
+  .met-grid{grid-template-columns:repeat(2,1fr)}
+  .dash-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-box">
+    <div class="lb-logo">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg></div>
+      <h2>數位乳房攝影品保系統</h2><p>新北市立土城醫院影像診療科</p>
+    </div>
+    <div class="login-err" id="login-err">帳號或密碼錯誤</div>
+    <div class="fg" style="margin-bottom:10px"><label>帳號</label><input type="text" id="login-id" placeholder="請輸入帳號"></div>
+    <div class="fg" style="margin-bottom:10px"><label>密碼</label><input type="password" id="login-pw" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-hint">
+      <div>📋 <strong>帳號</strong>：放射師帳號共4碼（3V＋序號，例如 3V01）</div>
+      <div>🔑 <strong>密碼</strong>：西元出生年月日共8碼（YYYYMMDD，例如 19900101）</div>
+    </div>
+    <button class="btn btn-pk" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()">登入</button>
+  </div>
+</div>
+
+<div class="app" id="mg-app" style="display:none">
+<nav class="sidebar">
+  <div class="sl-logo">
+    <div class="li" style="background:var(--pink)"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div>
+    <h1>數位乳房攝影<br>品保系統</h1><p>影像診療科</p>
+  </div>
+  <div class="sl-sec">主選單</div>
+  <button class="nav-btn active" onclick="showMgPage('dash',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>儀表板</button>
+  <button class="nav-btn" onclick="showMgPage('weekly',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>每週品保</button>
+  <button class="nav-btn" onclick="showMgPage('monthly',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>每月品保</button>
+  <button class="nav-btn" onclick="showMgPage('semiannual',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V9h14v11z"/></svg>每半年品保</button>
+  <button class="nav-btn" onclick="showMgPage('trend',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.5l6-6 4 4L22 6.92 20.59 5.5l-7.09 8-4-4L2 17l1.5 1.5z"/></svg>趨勢分析</button>
+  <button class="nav-btn" onclick="showMgPage('print',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>列印報表</button>
+  <button class="nav-btn" onclick="showMgPage('history',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 107-7v5h-2l3.25 3.25L17.5 12H15V7h-2z"/></svg>歷史查詢<span class="nav-badge" id="mg-review-badge" style="display:none">0</span></button>
+  <button class="nav-btn" id="mg-nav-settings" style="display:none" onclick="showMgPage('settings',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.6.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.4-.12.6l1.92 3.32c.12.22.37.29.6.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 110-7.2 3.6 3.6 0 010 7.2z"/></svg>系統設定</button>
+  <!-- ★ 登出按鈕移至系統設定下方，手機版也能看到 -->
+  <div class="sl-bot">
+    <button class="logout-btn" onclick="doLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>登出</button>
+  </div>
+</nav>
+<main class="main">
+<div class="app-topbar">
+  <div class="atb-sys"><svg width="14" height="14" viewBox="0 0 24 24" fill="var(--pink)"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg><span>數位乳房攝影品保系統</span></div>
+  <div class="atb-user"><div class="atb-avatar" id="mg-atb-avatar" style="background:var(--pink)">—</div><div><div class="atb-name" id="mg-atb-name">—</div><div class="atb-role" id="mg-atb-role">—</div></div></div>
+</div>
+
+<!-- DASH -->
+<div id="mg-page-dash" class="page active">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg></div><div><h2>儀表板</h2><p id="mg-dash-date"></p></div></div>
+  <div class="dash-grid" id="mg-dash-stats"></div>
+  <div id="mg-dash-device" style="margin-bottom:14px"></div>
+  <div class="card"><div class="card-hd"><div class="dot dot-a"></div><h3>近期警示</h3></div><div class="alert-list" id="mg-dash-alerts"></div></div>
+</div>
+
+<!-- WEEKLY -->
+<div id="mg-page-weekly" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg></div><div><h2>每週品保填寫</h2><p>各項目可分別填寫、確認並儲存</p></div></div>
+  <div class="card"><div class="frow">
+    <div class="fg"><label>測試日期</label><input type="date" id="mgw-date" onchange="onDateChange('weekly')"></div>
+    <div class="fg"><label>品保人員</label><div class="readonly-field" id="mgw-staff">—</div></div>
+  </div></div>
+  <div class="mg-itab-bar">
+    <button class="mg-itab active" onclick="showWTab('biopsy',this)">Biopsy當日</button>
+    <button class="mg-itab" onclick="showWTab('ph2d',this)">假體影像-2D</button>
+    <button class="mg-itab" onclick="showWTab('ph3d',this)">假體影像-3D</button>
+    <button class="mg-itab" onclick="showWTab('vendor',this)">原廠特定校正</button>
+  </div>
+  <div id="wtab-biopsy">
+    <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>若當週無 biopsy 檢查，每週仍至少需使用假體測試一次</div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>Biopsy 定位測試項目</h3></div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:14px">測試項目</th><th style="width:160px">P/F</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left;padding-left:14px">GE：定位準確度（biopsy當日）</td><td><div class="pf-wrap"><input type="radio" name="mgw-loc" id="mgw-locp" value="P" onchange="evalWBiopsy()"><label for="mgw-locp">P</label><input type="radio" name="mgw-loc" id="mgw-locf" value="F" onchange="evalWBiopsy()"><label for="mgw-locf">F</label></div></td></tr>
+        <tr><td style="text-align:left;padding-left:14px">GE：切片針支撐架之準確度（biopsy當日）</td><td><div class="pf-wrap"><input type="radio" name="mgw-needle" id="mgw-needlep" value="P" onchange="evalWBiopsy()"><label for="mgw-needlep">P</label><input type="radio" name="mgw-needle" id="mgw-needlef" value="F" onchange="evalWBiopsy()"><label for="mgw-needlef">F</label></div></td></tr>
+      </tbody></table>
+      <div id="wbiopsy-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">Biopsy定位</div><div class="rv" id="wbiopsy-txt">請完成評估</div></div><span id="wbiopsy-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgw-biopsy-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgw-biopsy-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgw-biopsy-chk" onchange="onTabConfirm('mgw','biopsy')"><label for="mgw-biopsy-chk">本人確認已完成本次 Biopsy 品保測試，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgw-biopsy-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveWTab('biopsy')">儲存紀錄</button><button class="btn btn-sm" onclick="clearWTab('biopsy')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="wtab-ph2d" style="display:none">
+    <div id="wtab-ph2d-hint" class="mg-hint-box" style="display:none"><h4>測試重點</h4><p id="ph2d-hint-txt" style="font-size:13px;color:#5a2040;line-height:1.8"></p></div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>假體影像品質 — 2D 模式（附表2-01）</h3></div>
+      <div class="frow">
+        <div class="fg"><label>影像模式</label><div class="readonly-field">2D</div></div>
+        <div class="fg"><label>壓迫板大小</label><div class="readonly-field" id="mg-paddle-size-2d">—</div></div>
+        <div class="fg"><label>壓迫板種類</label><div class="readonly-field" id="mg-paddle-type-2d">—</div></div>
+        <div class="fg"><label>kVp</label><input type="number" id="mgw-kvp2d" step="0.1"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>mAs</label><input type="number" id="mgw-mas2d" step="0.1"></div>
+        <div class="fg"><label>平均乳腺劑量(mGy)</label><input type="number" id="mgw-dose2d" step="0.01"></div>
+        <div class="fg"><label>窗寬設定</label><input type="number" id="mgw-ww2d"></div>
+        <div class="fg"><label>窗高設定</label><input type="number" id="mgw-wl2d"></div>
+      </div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>可見模擬物評估</h3></div>
+      <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>判定標準：纖維≥2、鈣化點群≥3、腫塊物≥2（ACR認證假體）</div>
+      <div class="mg-score-grid">
+        <div class="mg-score-card"><label>纖維</label><input type="number" id="mgw-fiber2d" min="0" max="6" step="0.5" oninput="evalWPh2d()"><div class="req">須 ≥ 2 分</div></div>
+        <div class="mg-score-card"><label>鈣化點群</label><input type="number" id="mgw-calc2d" min="0" max="5" step="0.5" oninput="evalWPh2d()"><div class="req">須 ≥ 3 分</div></div>
+        <div class="mg-score-card"><label>腫塊物</label><input type="number" id="mgw-mass2d" min="0" max="4" step="0.5" oninput="evalWPh2d()"><div class="req">須 ≥ 2 分</div></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label>假影評估</label>
+        <div class="pf-wrap" style="justify-content:flex-start">
+          <input type="radio" name="mgw-art2d" id="mgw-art2dp" value="P" onchange="evalWPh2d()"><label for="mgw-art2dp">P（無干擾假影）</label>
+          <input type="radio" name="mgw-art2d" id="mgw-art2df" value="F" onchange="evalWPh2d()"><label for="mgw-art2df">F（有干擾假影）</label>
+        </div>
+      </div>
+      <div id="wph2d-rbar" class="rbar pend"><div><div class="rl">2D 假體影像品質</div><div class="rv" id="wph2d-txt">請輸入評分</div></div><span id="wph2d-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgw-ph2d-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgw-ph2d-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgw-ph2d-chk" onchange="onTabConfirm('mgw','ph2d')"><label for="mgw-ph2d-chk">本人確認已完成本次 2D 假體影像品保測試，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgw-ph2d-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveWTab('ph2d')">儲存紀錄</button><button class="btn btn-sm" onclick="clearWTab('ph2d')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="wtab-ph3d" style="display:none">
+    <div id="wtab-ph3d-hint" class="mg-hint-box" style="display:none"><h4>測試重點</h4><p id="ph3d-hint-txt" style="font-size:13px;color:#5a2040;line-height:1.8"></p></div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>假體影像品質 — 3D 模式（附表2-01）</h3></div>
+      <div class="frow">
+        <div class="fg"><label>影像模式</label><div class="readonly-field">3D (plane)</div></div>
+        <div class="fg"><label>壓迫板大小</label><div class="readonly-field" id="mg-paddle-size-3d">—</div></div>
+        <div class="fg"><label>壓迫板種類</label><div class="readonly-field" id="mg-paddle-type-3d">—</div></div>
+        <div class="fg"><label>kVp</label><input type="number" id="mgw-kvp3d" step="0.1"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>mAs</label><input type="number" id="mgw-mas3d" step="0.1"></div>
+        <div class="fg"><label>平均乳腺劑量(mGy)</label><input type="number" id="mgw-dose3d" step="0.01"></div>
+        <div class="fg"><label>切片深度(mm)</label><input type="number" id="mgw-slice3d" step="0.1"></div>
+        <div class="fg"><label>窗寬設定</label><input type="number" id="mgw-ww3d"></div>
+      </div>
+      <div class="frow"><div class="fg"><label>窗高設定</label><input type="number" id="mgw-wl3d"></div></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>可見模擬物評估</h3></div>
+      <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>判定標準：纖維≥2、鈣化點群≥3、腫塊物≥2</div>
+      <div class="mg-score-grid">
+        <div class="mg-score-card"><label>纖維</label><input type="number" id="mgw-fiber3d" min="0" max="6" step="0.5" oninput="evalWPh3d()"><div class="req">須 ≥ 2 分</div></div>
+        <div class="mg-score-card"><label>鈣化點群</label><input type="number" id="mgw-calc3d" min="0" max="5" step="0.5" oninput="evalWPh3d()"><div class="req">須 ≥ 3 分</div></div>
+        <div class="mg-score-card"><label>腫塊物</label><input type="number" id="mgw-mass3d" min="0" max="4" step="0.5" oninput="evalWPh3d()"><div class="req">須 ≥ 2 分</div></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label>假影評估</label>
+        <div class="pf-wrap" style="justify-content:flex-start">
+          <input type="radio" name="mgw-art3d" id="mgw-art3dp" value="P" onchange="evalWPh3d()"><label for="mgw-art3dp">P（無干擾假影）</label>
+          <input type="radio" name="mgw-art3d" id="mgw-art3df" value="F" onchange="evalWPh3d()"><label for="mgw-art3df">F（有干擾假影）</label>
+        </div>
+      </div>
+      <div id="wph3d-rbar" class="rbar pend"><div><div class="rl">3D 假體影像品質</div><div class="rv" id="wph3d-txt">請輸入評分</div></div><span id="wph3d-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgw-ph3d-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgw-ph3d-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgw-ph3d-chk" onchange="onTabConfirm('mgw','ph3d')"><label for="mgw-ph3d-chk">本人確認已完成本次 3D 假體影像品保測試，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgw-ph3d-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveWTab('ph3d')">儲存紀錄</button><button class="btn btn-sm" onclick="clearWTab('ph3d')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="wtab-vendor" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-10A　原廠特定校正及測試（每週）</h3></div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:14px">校正項目</th><th style="width:160px">結果(P/F)</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left;padding-left:14px">影像均勻度與不良像素測試（flat field）— 2D</td><td><div class="pf-wrap"><input type="radio" name="mgw-ff2d" id="mgw-ff2dp" value="P"><label for="mgw-ff2dp">P</label><input type="radio" name="mgw-ff2d" id="mgw-ff2df" value="F"><label for="mgw-ff2df">F</label></div></td></tr>
+        <tr><td style="text-align:left;padding-left:14px">影像均勻度與不良像素測試（flat field）— biopsy</td><td><div class="pf-wrap"><input type="radio" name="mgw-ffbiopsy" id="mgw-ffbiopsyp" value="P"><label for="mgw-ffbiopsyp">P</label><input type="radio" name="mgw-ffbiopsy" id="mgw-ffbiopsyf" value="F"><label for="mgw-ffbiopsyf">F</label></div></td></tr>
+        <tr><td style="text-align:left;padding-left:14px">重組影像之均勻性測試（flat field）— 3D</td><td><div class="pf-wrap"><input type="radio" name="mgw-ff3d" id="mgw-ff3dp" value="P"><label for="mgw-ff3dp">P</label><input type="radio" name="mgw-ff3d" id="mgw-ff3df" value="F"><label for="mgw-ff3df">F</label></div></td></tr>
+        <tr><td style="text-align:left;padding-left:14px">IQST 測試</td><td><div class="pf-wrap"><input type="radio" name="mgw-iqst" id="mgw-iqstp" value="P"><label for="mgw-iqstp">P</label><input type="radio" name="mgw-iqst" id="mgw-iqstf" value="F"><label for="mgw-iqstf">F</label></div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>傳統 ACR 假體影像品質評分 — biopsy</h3></div>
+      <div class="mg-hint-box"><h4>執行重點提示</h4><ol><li id="hint1-disp">壓迫力：5 daN</li><li id="hint2-disp">曝露條件：scout view、AOP Biopsy 和 LCC view</li><li id="hint3-disp">在擷像工作站評分，纖維 / 鈣化點群 / 腫塊物要至少 4 / 3 / 3 分</li></ol></div>
+      <div class="mg-score-grid">
+        <div class="mg-score-card"><label>纖維</label><input type="number" id="mgw-acr-fiber" min="0" max="6" step="0.5" oninput="evalWAcr()"><div class="req">須 ≥ 4 分</div></div>
+        <div class="mg-score-card"><label>鈣化點群</label><input type="number" id="mgw-acr-calc" min="0" max="5" step="0.5" oninput="evalWAcr()"><div class="req">須 ≥ 3 分</div></div>
+        <div class="mg-score-card"><label>腫塊物</label><input type="number" id="mgw-acr-mass" min="0" max="4" step="0.5" oninput="evalWAcr()"><div class="req">須 ≥ 3 分</div></div>
+      </div>
+      <div id="wacr-rbar" class="rbar pend"><div><div class="rl">傳統ACR評分(biopsy)</div><div class="rv" id="wacr-txt">請輸入評分</div></div><span id="wacr-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgw-vendor-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgw-vendor-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgw-vendor-chk" onchange="onTabConfirm('mgw','vendor')"><label for="mgw-vendor-chk">本人確認已完成本次原廠特定校正測試，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgw-vendor-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveWTab('vendor')">儲存紀錄</button><button class="btn btn-sm" onclick="clearWTab('vendor')">重新填寫</button></div>
+    </div>
+  </div>
+</div>
+<!-- MONTHLY -->
+<div id="mg-page-monthly" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div><div><h2>每月品保填寫</h2><p>各項目可分別填寫、確認並儲存</p></div></div>
+  <div class="card"><div class="frow">
+    <div class="fg"><label>測試日期</label><input type="date" id="mgm-date" onchange="onDateChange('monthly')"></div>
+    <div class="fg"><label>品保人員</label><div class="readonly-field" id="mgm-staff">—</div></div>
+  </div></div>
+  <div class="mg-itab-bar">
+    <button class="mg-itab active" onclick="showMTab('compress',this)">壓迫厚度</button>
+    <button class="mg-itab" onclick="showMTab('visual',this)">目視檢查</button>
+    <button class="mg-itab" onclick="showMTab('acq',this)">擷像工作站</button>
+    <button class="mg-itab" onclick="showMTab('rad',this)">閱片工作站</button>
+    <button class="mg-itab" onclick="showMTab('mvendor',this)">原廠特定校正</button>
+  </div>
+  <div id="mtab-compress">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-03　壓迫厚度顯示準確性</h3></div>
+      <div class="frow">
+        <div class="fg"><label>廠牌/型號</label><div class="readonly-field" id="mgm-brand-model">GE / Senographe Pristina</div></div>
+        <div class="fg"><label>物件實際厚度(cm)</label><div class="readonly-field" id="mgm-actual-thick">4.5</div></div>
+        <div class="fg"><label>壓迫板種類</label><div class="readonly-field" id="mgm-paddle-type">spot paddle</div></div>
+        <div class="fg"><label>壓迫力(kg)</label><div class="readonly-field" id="mgm-compress-force">—</div></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>壓迫顯示厚度(cm)</label><input type="number" id="mgm-disp-thick" step="0.1" oninput="calcCompressDev()"></div>
+        <div class="fg"><label>偏差（自動計算，cm）</label><div style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#f7f9fc;font-size:13.5px;font-weight:600" id="mgm-thick-diff">—</div></div>
+        <div class="fg"><label>判定結果</label><div id="mgm-compress-result"><span class="badge bn">待填寫</span></div></div>
+      </div>
+      <div class="info-note">判定標準：壓迫厚度顯示值與實際厚度之偏差須在 ±0.5 cm 內</div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgm-compress-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgm-compress-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgm-compress-chk" onchange="onTabConfirm('mgm','compress')"><label for="mgm-compress-chk">本人確認已完成壓迫厚度顯示準確性測試，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgm-compress-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMTab('compress')">儲存紀錄</button><button class="btn btn-sm" onclick="clearMTab('compress')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="mtab-visual" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-04　目視檢查（2D 模式）</h3></div>
+      <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>重要評估項目(*)若有故障必須在臨床檢查前完成修復或更換</div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:10px;width:100px">類別</th><th style="text-align:left">評估項目</th><th style="width:120px">P/F</th></tr></thead>
+      <tbody id="mg-visual-tbody"></tbody></table>
+      <div id="mgm-visual-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">目視檢查整體</div><div class="rv" id="mgm-visual-txt">請完成所有項目</div></div><span id="mgm-visual-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgm-visual-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgm-visual-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgm-visual-chk" onchange="onTabConfirm('mgm','visual')"><label for="mgm-visual-chk">本人確認已完成目視檢查，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgm-visual-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMTab('visual')">儲存紀錄</button><button class="btn btn-sm" onclick="clearMTab('visual')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="mtab-acq" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-05　擷像工作站品管</h3></div>
+      <div class="frow" style="margin-bottom:8px">
+        <div class="fg"><label>螢幕廠牌</label><div class="readonly-field" id="mgm-acq-brand">Barco</div></div>
+        <div class="fg"><label>型號</label><div class="readonly-field" id="mgm-acq-model">MDNC-3421</div></div>
+        <div class="fg"><label>螢幕序號</label><div class="readonly-field" id="mgm-acq-sn">—</div></div>
+      </div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:10px;width:100px">類別</th><th style="text-align:left">評估項目</th><th style="width:120px">P/F</th></tr></thead>
+      <tbody id="mg-acq-tbody"></tbody></table>
+      <div id="mgm-acq-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">擷像工作站整體</div><div class="rv" id="mgm-acq-txt">請完成所有項目</div></div><span id="mgm-acq-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+      <div style="margin-top:12px;padding:12px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">螢幕原製造商自動測試已設定之測試項目（若可適用）</div>
+        <div style="font-size:13px;color:var(--gray);background:#e8edf5;padding:6px 12px;border-radius:6px">N/A（不適用）</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgm-acq-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgm-acq-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgm-acq-chk" onchange="onTabConfirm('mgm','acq')"><label for="mgm-acq-chk">本人確認已完成擷像工作站品管，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgm-acq-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMTab('acq')">儲存紀錄</button><button class="btn btn-sm" onclick="clearMTab('acq')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="mtab-rad" style="display:none">
+    <div id="mtab-rad-hint" class="mg-hint-box" style="display:none"><h4>測試重點</h4><p id="rad-hint-txt" style="font-size:13px;color:#5a2040;line-height:1.8"></p></div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-06　放射科醫師閱片工作站品管</h3></div>
+      <div class="frow" style="margin-bottom:8px">
+        <div class="fg"><label>螢幕廠牌</label><div class="readonly-field" id="mgm-rad-brand">Barco</div></div>
+        <div class="fg"><label>型號</label><div class="readonly-field" id="mgm-rad-model">MDCG-5221</div></div>
+        <div class="fg"><label>左螢幕序號</label><div class="readonly-field" id="mgm-rad-sn-l">—</div></div>
+        <div class="fg"><label>右螢幕序號</label><div class="readonly-field" id="mgm-rad-sn-r">—</div></div>
+      </div>
+      <div id="rad-test-img-wrap" style="margin-bottom:12px;display:none">
+        <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">測試圖像參考</div>
+        <div id="rad-test-img-content" style="background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px"></div>
+      </div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:10px;width:90px">類別</th><th style="text-align:left">評估項目</th><th style="width:100px">左螢幕</th><th style="width:100px">右螢幕</th></tr></thead>
+      <tbody id="mg-rad-tbody"></tbody></table>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div id="mgm-rad-l-rbar" class="rbar pend"><div><div class="rl">左螢幕</div><div class="rv" id="mgm-rad-l-txt">待判定</div></div><span id="mgm-rad-l-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+        <div id="mgm-rad-r-rbar" class="rbar pend"><div><div class="rl">右螢幕</div><div class="rv" id="mgm-rad-r-txt">待判定</div></div><span id="mgm-rad-r-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+      </div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgm-rad-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgm-rad-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgm-rad-chk" onchange="onTabConfirm('mgm','rad')"><label for="mgm-rad-chk">本人確認已完成閱片工作站品管，填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgm-rad-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMTab('rad')">儲存紀錄</button><button class="btn btn-sm" onclick="clearMTab('rad')">重新填寫</button></div>
+    </div>
+  </div>
+  <div id="mtab-mvendor" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-10B　原廠特定校正及測試（每月）</h3></div>
+      <table class="ctbl"><thead><tr><th style="text-align:left;padding-left:14px">校正項目</th><th style="width:160px">結果(P/F)</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left;padding-left:14px">AOP 模式和訊雜比檢查 — 2D（附表2-10B）</td><td><div class="pf-wrap"><input type="radio" name="mgm-aop2d" id="mgm-aop2dp" value="P"><label for="mgm-aop2dp">P</label><input type="radio" name="mgm-aop2d" id="mgm-aop2df" value="F"><label for="mgm-aop2df">F</label></div></td></tr>
+        <tr><td style="text-align:left;padding-left:14px">自動最佳化參數確認 — 3D（附表2-10B）</td><td><div class="pf-wrap"><input type="radio" name="mgm-aop3d" id="mgm-aop3dp" value="P"><label for="mgm-aop3dp">P</label><input type="radio" name="mgm-aop3d" id="mgm-aop3df" value="F"><label for="mgm-aop3df">F</label></div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgm-vendor-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    <div class="tab-confirm-box" id="mgm-mvendor-cbox">
+      <div class="confirm-chk-row"><input type="checkbox" id="mgm-mvendor-chk" onchange="onTabConfirm('mgm','mvendor')"><label for="mgm-mvendor-chk">本人確認已完成原廠特定校正測試（每月），填寫資料正確無誤。</label></div>
+      <div class="confirm-stamp" id="mgm-mvendor-stamp"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMTab('mvendor')">儲存紀錄</button><button class="btn btn-sm" onclick="clearMTab('mvendor')">重新填寫</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- SEMIANNUAL -->
+<div id="mg-page-semiannual" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V9h14v11z"/></svg></div><div><h2>每半年品保填寫</h2><p>壓迫力測試（每年6月、12月執行）</p></div></div>
+  <div class="ib ib-amber"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>每半年品保僅在 6月 及 12月 執行</div>
+  <div class="card"><div class="frow">
+    <div class="fg"><label>測試日期</label><input type="date" id="mgs-date" onchange="onDateChange('semi')"></div>
+    <div class="fg"><label>品保人員</label><div class="readonly-field" id="mgs-staff">—</div></div>
+    <div class="fg"><label>廠牌/型號</label><div class="readonly-field" id="mgs-brand-model">GE / Senographe Pristina</div></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>壓迫力量測工具</label><div class="readonly-field" id="mgs-tool">—</div></div>
+    <div class="fg"><label>顯示單位</label><div class="readonly-field" id="mgs-unit">—</div></div>
+  </div></div>
+  <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-09　壓迫力測試</h3></div>
+    <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>判定標準：(1) 手動微調壓迫力須≥25磅（11.1 daN）；(2) 電動驅動初始壓迫最大壓迫力須介於25~45磅之間</div>
+    <div style="overflow-x:auto"><table class="ctbl">
+      <thead><tr><th style="text-align:left;padding-left:10px">測試項目</th><th>2D模式數值</th><th style="width:160px">2D模式判定(自動)</th><th>DBT外加設備</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left;padding-left:10px">1. 手動微調壓迫力</td><td><input type="number" id="mgs-manual2d" style="width:90px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p1-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+        <tr><td style="text-align:left;padding-left:10px">2. 電動驅動之初始壓迫最大壓迫力</td><td><input type="number" id="mgs-motor2d" style="width:90px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p2-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+        <tr><td style="text-align:left;padding-left:10px">3. 整個取像過程中皆可維持足夠的壓迫力</td><td></td><td><div class="pf-wrap"><input type="radio" name="mgs-p3-2d" id="mgs-p3-2dp" value="P" onchange="evalSemiannual()"><label for="mgs-p3-2dp">P</label><input type="radio" name="mgs-p3-2d" id="mgs-p3-2df" value="F" onchange="evalSemiannual()"><label for="mgs-p3-2df">F</label></div></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
+      </tbody>
+    </table></div>
+    <div id="mgs-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+  </div>
+  <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgs-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
+  <div class="tab-confirm-box" id="mgs-cbox">
+    <div class="confirm-chk-row"><input type="checkbox" id="mgs-chk" onchange="onTabConfirm('mgs','semi')"><label for="mgs-chk">本人確認已完成壓迫力測試，以上填寫資料正確無誤。</label></div>
+    <div class="confirm-stamp" id="mgs-semi-stamp"></div>
+    <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgSemiannual()">儲存紀錄</button><button class="btn btn-sm" onclick="clearMgSemiannual()">重新填寫</button></div>
+  </div>
+</div>
+
+<!-- TREND -->
+<div id="mg-page-trend" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M3.5 18.5l6-6 4 4L22 6.92 20.59 5.5l-7.09 8-4-4L2 17l1.5 1.5z"/></svg></div><div><h2>趨勢分析</h2><p>假體影像品質評分長期監控</p></div></div>
+  <div class="card">
+    <div class="ttab-bar"><button class="ttab active" onclick="switchMgMode('2d',this)">2D 模式</button><button class="ttab" onclick="switchMgMode('3d',this)">3D 模式</button></div>
+    <div class="frow">
+      <div class="fg"><label>開始日期</label><input type="date" id="mg-t-start" onchange="renderMgTrend()"></div>
+      <div class="fg"><label>結束日期</label><input type="date" id="mg-t-end" onchange="renderMgTrend()"></div>
+      <div class="fg"><label>快速選擇</label>
+        <select id="mg-t-quick" onchange="applyTrendQuick()">
+          <option value="">自訂區間</option>
+          <option value="1m">本月</option>
+          <option value="3m">近3個月</option>
+          <option value="6m">近6個月</option>
+          <option value="1y">近1年</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="met-grid">
+    <div class="met mpk"><div class="ml">纖維平均</div><div class="mv" id="mg-t-fiber">—</div></div>
+    <div class="met mb"><div class="ml">鈣化點群平均</div><div class="mv" id="mg-t-calc">—</div></div>
+    <div class="met mg"><div class="ml">腫塊物平均</div><div class="mv" id="mg-t-mass">—</div></div>
+    <div class="met mr"><div class="ml">不合格次數</div><div class="mv" id="mg-t-fail">—</div></div>
+  </div>
+  <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>纖維評分趨勢</h3></div><div class="chart-wrap"><canvas id="mgFiberChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="dot dot-b"></div><h3>鈣化點群評分趨勢</h3></div><div class="chart-wrap"><canvas id="mgCalcChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="dot dot-t"></div><h3>腫塊物評分趨勢</h3></div><div class="chart-wrap"><canvas id="mgMassChart"></canvas></div></div>
+  <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>月平均分數比較</h3></div><div class="chart-wrap" style="height:180px"><canvas id="mgMonthChart"></canvas></div></div>
+  <div id="mg-trend-note" class="info-note" style="margin-top:0"></div>
+</div>
+
+<!-- PRINT -->
+<div id="mg-page-print" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg></div><div><h2>列印報表</h2><p>選擇報表類型進行列印</p></div></div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;color:#1a2744;margin-bottom:10px">列印範圍設定</div>
+    <div class="frow">
+      <div class="fg"><label>選擇月份（每月報表）</label><input type="month" id="mg-print-month" style="width:160px" onchange="document.getElementById('mg-print-start').value='';document.getElementById('mg-print-end').value=''"></div>
+      <div class="fg"><label>自訂開始日期</label><input type="date" id="mg-print-start" onchange="document.getElementById('mg-print-month').value=''"></div>
+      <div class="fg"><label>自訂結束日期</label><input type="date" id="mg-print-end" onchange="document.getElementById('mg-print-month').value=''"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>選擇年份（每年報表）</label><input type="number" id="mg-print-year" min="2020" max="2040" style="width:130px"></div>
+    </div>
+    <div class="info-note">選擇月份或自訂日期區間擇一使用；每年報表請選擇年份</div>
+  </div>
+  <div style="margin-bottom:10px;font-size:13px;font-weight:600;color:var(--pink)">每月 / 自訂區間列印</div>
+  <div class="print-btn-grid" style="margin-bottom:20px">
+    <div class="print-card"><div class="pc-title">表格01　每日及每週測試總表</div><div class="pc-desc">Biopsy當日 + 每週品保結果總表</div><span class="pc-tag tag-monthly">每月</span><button class="btn btn-pk btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMgTable01()">列印</button></div>
+    <div class="print-card"><div class="pc-title">假體影像品質報表（附表2-01）</div><div class="pc-desc">2D及3D模式含所有參數數值詳細報表</div><span class="pc-tag tag-monthly">每月</span><button class="btn btn-pk btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMgPhantom()">列印</button></div>
+    <div class="print-card"><div class="pc-title">原廠特定校正每週（附表2-10A）</div><div class="pc-desc">含傳統ACR假體影像品質評分biopsy參數</div><span class="pc-tag tag-monthly">每月</span><button class="btn btn-pk btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_10A()">列印</button></div>
+  </div>
+  <div style="margin-bottom:10px;font-size:13px;font-weight:600;color:var(--purple)">每年列印</div>
+  <div class="print-btn-grid">
+    <div class="print-card"><div class="pc-title">表格02　每月及每半年測試總表</div><div class="pc-desc">全年每月及半年品保測試結果總表</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMgTable02()">列印</button></div>
+    <div class="print-card"><div class="pc-title">壓迫厚度顯示準確性（附表2-03）</div><div class="pc-desc">全年壓迫厚度顯示準確性測試記錄</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_03()">列印</button></div>
+    <div class="print-card"><div class="pc-title">目視檢查（附表2-04）</div><div class="pc-desc">全年目視檢查記錄</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_04()">列印</button></div>
+    <div class="print-card"><div class="pc-title">擷像工作站品管（附表2-05）</div><div class="pc-desc">全年擷像工作站品管記錄</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_05()">列印</button></div>
+    <div class="print-card"><div class="pc-title">閱片工作站品管（附表2-06）</div><div class="pc-desc">全年閱片工作站品管記錄</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_06()">列印</button></div>
+    <div class="print-card"><div class="pc-title">原廠特定校正每月（附表2-10B）</div><div class="pc-desc">全年原廠特定校正每月測試記錄</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_10B()">列印</button></div>
+    <div class="print-card"><div class="pc-title">壓迫力測試（附表2-09）</div><div class="pc-desc">全年每半年壓迫力測試結果（6月/12月）</div><span class="pc-tag tag-yearly">每年</span><button class="btn btn-pu btn-sm" style="margin-top:6px;align-self:flex-start" onclick="printMg2_09()">列印</button></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="mg-page-history" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 107-7v5h-2l3.25 3.25L17.5 12H15V7h-2z"/></svg></div><div><h2>歷史查詢</h2><p>品保紀錄查詢、個別覆核與匯出</p></div></div>
+  <div id="mg-month-review-section" style="display:none"><div class="card">
+    <div class="card-hd"><div class="dot dot-p"></div><h3>待覆核月份彙整</h3>
+      <span class="badge bw" style="margin-left:8px" id="mg-pending-badge">0 個月</span>
+      <div style="margin-left:8px;font-size:11px;color:var(--gray)">（每週品保：表格01 / 附表2-01 / 附表2-10A）</div>
+    </div>
+    <div id="mg-month-review-list"></div>
+  </div></div>
+  <div class="hf">
+    <div class="fg"><label>類型</label><select id="mg-h-type" style="width:140px"><option value="">全部</option><option value="mg-weekly">每週</option><option value="mg-monthly-item">每月</option><option value="mg-semiannual">每半年</option></select></div>
+    <div class="fg"><label>月份</label><input type="month" id="mg-h-month" style="width:148px"></div>
+    <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button></div></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="htbl">
+      <thead><tr><th>日期</th><th>類型</th><th>子項目</th><th>品保人員</th><th>整體判定</th><th>覆核狀態</th><th>操作</th></tr></thead>
+      <tbody id="mg-hist-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="mg-page-settings" class="page">
+  <div class="ph"><div class="ph-icon ph-mg"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.6.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.4-.12.6l1.92 3.32c.12.22.37.29.6.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 110-7.2 3.6 3.6 0 010 7.2z"/></svg></div><div><h2>系統設定</h2><p>管理者專屬設定介面</p></div></div>
+  <div class="stab-bar">
+    <button class="stab active" onclick="showMgStab('mg-equip',this)">設備設定</button>
+    <button class="stab" onclick="showMgStab('mg-users',this)">使用者管理</button>
+    <button class="stab" onclick="showMgStab('mg-notify',this)">通知設定</button>
+    <button class="stab" onclick="showMgStab('mg-hints',this)">執行重點設定</button>
+    <button class="stab" onclick="showMgStab('mg-sheets',this)">Google Sheets 設定</button>
+  </div>
+  <!-- 設備設定 -->
+  <div id="stab-mg-equip">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>乳房攝影機設備資訊</h3></div>
+      <div class="frow"><div class="fg"><label>廠牌</label><input type="text" id="mg-cfg-brand"></div><div class="fg"><label>型號</label><input type="text" id="mg-cfg-model"></div><div class="fg"><label>攝影室名稱</label><input type="text" id="mg-cfg-room"></div></div>
+      <div class="frow"><div class="fg"><label>假體廠牌/型號</label><input type="text" id="mg-cfg-phantom"></div><div class="fg"><label>假體序號</label><input type="text" id="mg-cfg-phantom-sn"></div></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgEquipCfg()">儲存設備設定</button></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>螢幕設備資訊</h3></div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:8px">擷像工作站</div>
+      <div class="frow"><div class="fg"><label>廠牌</label><input type="text" id="mg-cfg-acq-brand"></div><div class="fg"><label>型號</label><input type="text" id="mg-cfg-acq-model"></div><div class="fg"><label>序號</label><input type="text" id="mg-cfg-acq-sn"></div></div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:8px;margin-top:6px">放射科醫師閱片工作站</div>
+      <div class="frow"><div class="fg"><label>廠牌</label><input type="text" id="mg-cfg-rad-brand"></div><div class="fg"><label>型號</label><input type="text" id="mg-cfg-rad-model"></div><div class="fg"><label>左螢幕序號</label><input type="text" id="mg-cfg-rad-sn-l"></div><div class="fg"><label>右螢幕序號</label><input type="text" id="mg-cfg-rad-sn-r"></div></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgScreenCfg()">儲存螢幕設定</button></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>假體影像品質項目設定</h3></div>
+      <div class="ib ib-amber"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>設定將顯示在假體影像 2D / 3D 測試頁</div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:8px">假體影像 — 2D 模式</div>
+      <div class="frow">
+        <div class="fg"><label>壓迫板大小</label><input type="text" id="mg-cfg-paddle-size-2d"></div>
+        <div class="fg"><label>壓迫板種類</label><input type="text" id="mg-cfg-paddle-type-2d"></div>
+        <div class="fg" style="grid-column:span 2"><label>測試重點</label><textarea id="mg-cfg-hint-2d" rows="2" style="width:100%;resize:vertical"></textarea></div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:8px;margin-top:8px">假體影像 — 3D 模式</div>
+      <div class="frow">
+        <div class="fg"><label>壓迫板大小</label><input type="text" id="mg-cfg-paddle-size-3d"></div>
+        <div class="fg"><label>壓迫板種類</label><input type="text" id="mg-cfg-paddle-type-3d"></div>
+        <div class="fg" style="grid-column:span 2"><label>測試重點</label><textarea id="mg-cfg-hint-3d" rows="2" style="width:100%;resize:vertical"></textarea></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgPhantomCfg()">儲存假體影像設定</button></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>壓迫厚度顯示準確性項目設定</h3></div>
+      <div class="frow">
+        <div class="fg"><label>壓迫板種類</label><input type="text" id="mg-cfg-compress-paddle"></div>
+        <div class="fg"><label>物件實際厚度(cm)</label><input type="number" id="mg-cfg-actual-thick" step="0.1"></div>
+        <div class="fg"><label>壓迫力(kg)</label><input type="number" id="mg-cfg-compress-force-kg" step="0.1"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgCompressCfg()">儲存壓迫厚度設定</button></div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>壓迫力測試項目設定</h3></div>
+      <div class="frow">
+        <div class="fg"><label>壓迫力量測工具</label><input type="text" id="mg-cfg-tool"></div>
+        <div class="fg"><label>量測工具顯示單位</label><input type="text" id="mg-cfg-unit"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgCompressToolCfg()">儲存壓迫力工具設定</button></div>
+    </div>
+  </div>
+
+  <!-- 使用者管理 -->
+  <div id="stab-mg-users" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-p"></div><h3>使用者清單</h3>
+      <div style="margin-left:auto;display:flex;gap:7px"><button class="btn btn-sm" onclick="downloadCSVTemplate()">下載CSV範本</button><button class="btn btn-sm" onclick="openUserModal()">+ 新增</button><label class="btn btn-sm" style="cursor:pointer">匯入CSV<input type="file" accept=".csv" id="mg-csv-input" style="display:none" onchange="importCSV(event)"></label></div>
+    </div>
+    <table class="utbl"><thead><tr><th>姓名</th><th>帳號</th><th>角色</th><th>覆核權限</th><th>操作</th></tr></thead><tbody id="mg-user-tbody"></tbody></table>
+    <div id="users-sync-status"></div>
+    </div>
+  </div>
+
+  <!-- 通知設定 -->
+  <div id="stab-mg-notify" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-a"></div><h3>通知設定</h3></div>
+      <div style="overflow-x:auto"><table class="notify-tbl"><thead><tr><th>人員</th><th style="min-width:160px">Email</th><th>每週完成</th><th>每月完成</th><th>不合格通知</th><th>月覆核完成</th></tr></thead><tbody id="mg-notify-body"></tbody></table></div>
+      <div id="notify-sync-status"></div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgNotify()">儲存設定</button></div>
+    </div>
+  </div>
+
+  <!-- 執行重點設定 -->
+  <div id="stab-mg-hints" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>執行重點設定</h3></div>
+      <div class="ib ib-amber"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>設定將顯示在對應測試頁面中</div>
+      <div style="padding:12px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border);display:flex;flex-direction:column;gap:12px">
+        <div><div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">傳統 ACR 假體影像品質評分 — biopsy（執行重點1）</div><input type="text" id="hint1-input"></div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">傳統 ACR 假體影像品質評分 — biopsy（執行重點2）</div><input type="text" id="hint2-input"></div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">傳統 ACR 假體影像品質評分 — biopsy（執行重點3）</div><input type="text" id="hint3-input"></div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">放射科醫師閱片工作站品管 — 測試重點</div><textarea id="hint-rad-input" rows="3" style="width:100%;resize:vertical"></textarea></div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">放射科醫師閱片工作站品管 — 測試圖像說明</div><textarea id="hint-rad-img-input" rows="3" style="width:100%;resize:vertical"></textarea></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-pk btn-sm" onclick="saveMgHints()">儲存執行重點</button></div>
+    </div>
+  </div>
+
+  <!-- ★ Google Sheets 設定 -->
+  <div id="stab-mg-sheets" style="display:none">
+    <div class="card"><div class="card-hd"><div class="dot dot-t"></div><h3>Google Sheets 同步設定</h3></div>
+      <div class="ib ib-blue"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>同步方向為單向：本系統 → Google Sheets（Sheets 僅做備份）</div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Apps Script 部署網址</label>
+        <div class="sheets-url-wrap">
+          <input type="text" id="mg-sheets-url" placeholder="https://script.google.com/macros/s/.../exec">
+          <button class="btn btn-teal btn-sm" onclick="saveSheetsUrl()">儲存網址</button>
+          <button class="btn btn-sm" onclick="testSheetsConnection()">連線測試</button>
+        </div>
+      </div>
+      <div id="sheets-conn-status"></div>
+      <div class="info-note" style="margin-top:12px">
+        <strong>部署步驟：</strong><br>
+        1. 在 Google Sheets 開啟「擴充功能 &gt; Apps Script」<br>
+        2. 貼上 Code.gs 內容並儲存<br>
+        3. 點「部署 &gt; 新增部署」，類型選「網頁應用程式」<br>
+        4. 執行身分：「我」；存取權：「所有人（包括匿名）」<br>
+        5. 複製部署後的網址貼入上方欄位
+      </div>
+    </div>
+    <div class="card"><div class="card-hd"><div class="dot dot-t"></div><h3>手動同步</h3></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:#1a2744">使用者管理</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px">同步至 mg_users 工作表</div>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="syncUsersToSheets(true)">立即同步</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f7f9fc;border-radius:8px;border:1px solid var(--border)">
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:#1a2744">通知設定</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px">同步至 mg_notify 工作表</div>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="syncNotifyToSheets(true)">立即同步</button>
+        </div>
+      </div>
+      <div id="manual-sync-status" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div><!-- end settings page -->
+</main>
+</div><!-- end mg-app -->
+<!-- Modals -->
+<div class="modal-bg" id="user-modal">
+  <div class="mbox" style="width:420px">
+    <h3>使用者設定</h3><input type="hidden" id="um-idx">
+    <div class="frow" style="margin-bottom:10px"><div class="fg"><label>姓名</label><input type="text" id="um-name"></div><div class="fg"><label>帳號</label><input type="text" id="um-id"></div></div>
+    <div class="frow" style="margin-bottom:10px"><div class="fg"><label>密碼</label><input type="text" id="um-pw"></div><div class="fg"><label>角色</label><select id="um-role"><option value="user">一般使用者</option><option value="admin">管理者</option></select></div></div>
+    <div class="fg" style="margin-bottom:14px"><label style="text-transform:none;font-size:13px;letter-spacing:0;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400"><input type="checkbox" id="um-can-review" style="width:16px;height:16px"><span>具備覆核權限</span></label></div>
+    <div class="btn-row"><button class="btn" onclick="closeModal('user-modal')">取消</button><button class="btn btn-p" onclick="saveUser()">確認儲存</button></div>
+  </div>
+</div>
+<div class="modal-bg" id="dup-modal">
+  <div class="mbox" style="width:440px">
+    <h3>重複填寫提醒</h3>
+    <div class="dup-detail" id="dup-detail"></div>
+    <p style="font-size:13.5px;margin-bottom:14px">請選擇處理方式：</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-r" style="justify-content:center" onclick="dupAction('overwrite')">覆蓋前次資料</button>
+      <button class="btn btn-g" style="justify-content:center" onclick="dupAction('keep')">保留前次並新增本次</button>
+      <button class="btn" style="justify-content:center" onclick="closeModal('dup-modal')">取消，不儲存</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="month-review-modal">
+  <div class="mbox">
+    <h3>月彙整覆核　<span style="font-size:13px;color:var(--gray);font-weight:400">每週品保（表格01 / 附表2-01 / 附表2-10A）</span></h3>
+    <div id="mr-summary"></div>
+    <div class="review-section">
+      <h4>覆核意見</h4>
+      <div class="opinion-wrap"><input type="radio" name="mr-opinion" id="op-none" value="none" onchange="onOpinionChange()" checked><label for="op-none">本月無異常追蹤事項</label><input type="radio" name="mr-opinion" id="op-has" value="has" onchange="onOpinionChange()"><label for="op-has">有意見，請填寫</label></div>
+      <div id="op-text-wrap" style="display:none;margin-bottom:10px"><textarea id="mr-opinion-text" rows="3" style="width:100%;resize:vertical" oninput="updateOpPreview()"></textarea></div>
+      <div id="op-preview" style="font-size:13px;color:var(--gray);background:#fff;border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:12px">本月無異常追蹤事項</div>
+      <div class="tab-confirm-box" id="mr-confirm-box">
+        <div class="confirm-chk-row"><input type="checkbox" id="mr-confirm-chk" onchange="onReviewConfirm()"><label for="mr-confirm-chk">本人確認已審閱本月所有每週品保紀錄，完成月彙整覆核。</label></div>
+        <div class="confirm-stamp" id="mr-confirm-stamp"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn" onclick="closeModal('month-review-modal')">關閉</button><button class="btn btn-pu" onclick="submitMgReview()">確認覆核</button></div>
+  </div>
+</div>
+<div class="modal-bg" id="item-review-modal">
+  <div class="mbox" style="width:480px">
+    <h3 id="item-review-title">項目覆核</h3>
+    <div id="item-review-summary" style="font-size:13px;margin-bottom:12px;padding:10px;background:var(--gray-l);border-radius:8px;border:1px solid var(--border)"></div>
+    <div class="review-section">
+      <h4>覆核意見</h4>
+      <div class="opinion-wrap">
+        <input type="radio" name="ir-opinion" id="ir-none" value="none" onchange="onItemOpinionChange()" checked><label for="ir-none">無異常</label>
+        <input type="radio" name="ir-opinion" id="ir-has" value="has" onchange="onItemOpinionChange()"><label for="ir-has">有意見</label>
+      </div>
+      <div id="ir-text-wrap" style="display:none;margin-bottom:10px"><textarea id="ir-opinion-text" rows="3" style="width:100%;resize:vertical"></textarea></div>
+      <div class="tab-confirm-box" id="ir-confirm-box">
+        <div class="confirm-chk-row"><input type="checkbox" id="ir-confirm-chk" onchange="onItemReviewConfirm()"><label for="ir-confirm-chk">本人確認已審閱此筆紀錄，完成覆核。</label></div>
+        <div class="confirm-stamp" id="ir-confirm-stamp"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn" onclick="closeModal('item-review-modal')">關閉</button><button class="btn btn-pu" onclick="submitItemReview()">確認覆核</button></div>
+  </div>
+</div>
+<div class="modal-bg" id="rec-detail-modal">
+  <div class="mbox"><h3 id="rec-detail-title">紀錄詳情</h3><div id="rec-detail-body"></div><div class="btn-row"><button class="btn btn-pk" onclick="closeModal('rec-detail-modal')">關閉</button></div></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="print-area"></div>
+<script>
+// ══ DATA DEFAULTS ══
+const DEF_MG_EQUIP={brand:'GE',model:'Senographe Pristina',room:'第12攝影室',phantom:'CIRS/086',phantomSn:'11805'};
+const DEF_MG_SCREEN={acqBrand:'Barco',acqModel:'MDNC-3421',acqSn:'(21)2590215968',radBrand:'Barco',radModel:'MDCG-5221',radSnL:'(R)2590218727',radSnR:'(L)2590218730'};
+const DEF_MG_COMPRESS={paddle:'spot paddle',actualThick:4.5,forceKg:5};
+const DEF_MG_TOOL={tool:'體重計',unit:'kg'};
+const DEF_MG_PHANTOM={paddleSize2d:'24x29 cm',paddleType2d:'標準壓迫板',hint2d:'',paddleSize3d:'24x29 cm',paddleType3d:'標準壓迫板',hint3d:''};
+const DEF_MG_HINTS={h1:'壓迫力：5 daN',h2:'曝露條件：scout view、AOP Biopsy 和 LCC view',h3:'在擷像工作站評分，纖維 / 鈣化點群 / 腫塊物要至少 4 / 3 / 3 分',rad:'',radImg:''};
+const DEF_USERS=[
+  {name:'系統管理員',id:'admin',pw:'admin123',role:'admin',canReview:true,email:''},
+  {name:'羅芬鈺',id:'ra001',pw:'pass123',role:'user',canReview:true,email:''},
+  {name:'張志豪',id:'zh002',pw:'pass123',role:'user',canReview:false,email:''},
+  {name:'林美華',id:'mh003',pw:'pass123',role:'user',canReview:false,email:''},
+  {name:'陳建宏',id:'jh004',pw:'pass123',role:'user',canReview:false,email:''},
+  {name:'王淑芬',id:'sf005',pw:'pass123',role:'user',canReview:false,email:''}
+];
+const MG_VISUAL_ITEMS=[
+  {cat:'檢查室清潔',key:'clean1',label:'放大架與壓迫板是沒有灰塵的'},
+  {cat:'檢查室清潔',key:'clean2',label:'檢查室內與檢查桌面是沒有灰塵的'},
+  {cat:'X光機',key:'ind',label:'指示燈功能正常'},
+  {cat:'X光機',key:'lock',label:'卡榫（全部）*'},
+  {cat:'X光機',key:'level',label:'準直儀燈功能正常'},
+  {cat:'X光機',key:'cable',label:'電纜線的放置是安全的'},
+  {cat:'X光機',key:'carm',label:'C型臂的移動順暢無阻礙'},
+  {cat:'X光機',key:'paddle',label:'壓迫板的移動順暢無阻礙'},
+  {cat:'X光機',key:'paddlecrack',label:'壓迫板或擋臉板是無裂縫的*'},
+  {cat:'X光機',key:'supportcrack',label:'乳房支撐板是無裂縫的*'},
+  {cat:'CR（若適用）',key:'cr1',label:'CR片匣的支撐物組件與卡榫（大/小片匣）*',na:true},
+  {cat:'CR（若適用）',key:'cr2',label:'影像板與CR片匣的狀況*',na:true},
+  {cat:'掃描式偵檢器（若適用）',key:'scan1',label:'掃描式偵檢器系統 — 項目一',na:true},
+  {cat:'DBT',key:'dbt',label:'DBT組件的移動範圍是按其所設計的方式*'}
+];
+const MG_ACQ_ITEMS=[
+  {cat:'螢幕狀態',key:'screen',label:'螢幕表面是否有灰塵、刮痕、指紋、其他異常的亮塊或異物'},
+  {cat:'影像品質',key:'low5',label:'圖像上0%–5%之對比方塊是否可清楚辨別'},
+  {cat:'影像品質',key:'high95',label:'圖像上95%–100%之對比方塊是否可清楚辨別'},
+  {cat:'影像品質',key:'hrcenter',label:'在圖像中央的高對比解析度之線對是否可清楚辨別'},
+  {cat:'影像品質',key:'hrcorner',label:'在四個角落的高對比解析度之線對是否可清楚辨別'}
+];
+const MG_RAD_ITEMS=[
+  {cat:'螢幕狀態',key:'screen',label:'螢幕表面是否有灰塵、刮痕、指紋、其他異常的亮塊或異物'},
+  {cat:'假體評估',key:'artifact',label:'不可有會干擾鄰床診斷的假影或非均勻性存在'},
+  {cat:'假體評估',key:'phantom',label:'假體可見模擬物評分（纖維/鈣化點群/腫塊物）',isScore:true},
+  {cat:'影像品質',key:'low5',label:'圖像上0%–5%之對比方塊是否可被清楚辨別'},
+  {cat:'影像品質',key:'high95',label:'圖像上95%–100%之對比方塊是否可被清楚辨別'},
+  {cat:'影像品質',key:'hrcenter',label:'在圖像中央的高對比解析度之線對是否可被清楚辨別'},
+  {cat:'影像品質',key:'hrcorner',label:'在四個角落的高對比解析度之線對與四個角落是否可被清楚辨別'},
+  {cat:'廠商自動測試',key:'vendor_auto',label:'螢幕原製造商自動測試已設定之測試項目（若可適用）'}
+];
+const WEEKLY_SUBTYPES=['biopsy','ph2d','ph3d','vendor'];
+
+let sharedCfg={},mgCfg={},mgRecords=[];
+let currentUser=null,pendingSaveData=null,currentMrMonth=null,currentItemReviewIdx=null;
+let mgFChart=null,mgCChart=null,mgMChartInst=null,mgMonthChart=null,mgTMode='2d';
+let filteredMgRecords=[];
+
+// ══ STATE ══
+function loadState(){
+  try{sharedCfg=JSON.parse(localStorage.getItem('shared-cfg-v3'))||{};}catch(e){sharedCfg={};}
+  if(!sharedCfg.users||!sharedCfg.users.length) sharedCfg.users=JSON.parse(JSON.stringify(DEF_USERS));
+  sharedCfg.users.forEach(u=>{if(u.role==='admin')u.canReview=true;if(u.canReview===undefined)u.canReview=false;if(!u.email)u.email='';});
+  try{mgCfg=JSON.parse(localStorage.getItem('mg-cfg-v3'))||{};}catch(e){mgCfg={};}
+  if(!mgCfg.equip)mgCfg.equip=JSON.parse(JSON.stringify(DEF_MG_EQUIP));
+  if(!mgCfg.screen)mgCfg.screen=JSON.parse(JSON.stringify(DEF_MG_SCREEN));
+  if(!mgCfg.compress)mgCfg.compress=JSON.parse(JSON.stringify(DEF_MG_COMPRESS));
+  if(!mgCfg.tool)mgCfg.tool=JSON.parse(JSON.stringify(DEF_MG_TOOL));
+  if(!mgCfg.phantom)mgCfg.phantom=JSON.parse(JSON.stringify(DEF_MG_PHANTOM));
+  if(!mgCfg.hints)mgCfg.hints=JSON.parse(JSON.stringify(DEF_MG_HINTS));
+  if(!mgCfg.notifyPrefs)mgCfg.notifyPrefs={};
+  if(!mgCfg.sheetsUrl)mgCfg.sheetsUrl='';
+  try{mgRecords=JSON.parse(localStorage.getItem('mg-rec-v3'))||[];}catch(e){mgRecords=[];}
+  if(!mgRecords.length) seedMgData();
+}
+function saveState(){
+  localStorage.setItem('shared-cfg-v3',JSON.stringify(sharedCfg));
+  localStorage.setItem('mg-cfg-v3',JSON.stringify(mgCfg));
+  localStorage.setItem('mg-rec-v3',JSON.stringify(mgRecords));
+}
+function nowStamp(){return new Date().toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function seedMgData(){
+  const ts=nowStamp();const today=new Date();const yr=today.getFullYear();const mo=today.getMonth()+1;
+  const moStr=String(mo).padStart(2,'0');
+  const days=[4,11,18];const staff=['簡宜蓁','陳靜誼','簡宜蓁'];
+  days.forEach((d,i)=>{
+    if(d>=today.getDate()) return;
+    const ds=`${yr}-${moStr}-${String(d).padStart(2,'0')}`;
+    mgRecords.push({type:'mg-weekly',subtype:'ph2d',date:ds,staff:staff[i],savedAt:ts,overall:'pass',fiber:4,calc:5,mass:3,artifact:'P',kvp:34,mas:parseFloat((31.9+Math.random()*0.5).toFixed(1)),dose:parseFloat((1.48+Math.random()*0.04).toFixed(2)),ww:338,wl:443,note:'',fails:[]});
+    mgRecords.push({type:'mg-weekly',subtype:'ph3d',date:ds,staff:staff[i],savedAt:ts,overall:'pass',fiber:3.5,calc:4,mass:3,artifact:'P',kvp:34,mas:parseFloat((32.6+Math.random()*0.5).toFixed(1)),dose:parseFloat((1.47+Math.random()*0.06).toFixed(2)),slice:40,ww:338,wl:379,note:'',fails:[]});
+    mgRecords.push({type:'mg-weekly',subtype:'biopsy',date:ds,staff:staff[i],savedAt:ts,overall:'pass',loc:'P',needle:'P',note:'',fails:[]});
+    mgRecords.push({type:'mg-weekly',subtype:'vendor',date:ds,staff:staff[i],savedAt:ts,overall:'pass',ff2d:'P',ffBiopsy:'P',ff3d:'P',iqst:'P',acrFiber:4,acrCalc:4,acrMass:3.5,note:'',fails:[]});
+  });
+  const lm=mo===1?12:mo-1,ly=mo===1?yr-1:yr,lms=String(lm).padStart(2,'0');
+  mgRecords.push({type:'mg-monthly-item',subtype:'compress',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',dispThick:4.3,diff:-0.2,note:'',fails:[]});
+  mgRecords.push({type:'mg-monthly-item',subtype:'visual',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',items:{},note:'',fails:[]});
+  mgRecords.push({type:'mg-monthly-item',subtype:'acq',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',items:{},note:'',fails:[]});
+  mgRecords.push({type:'mg-monthly-item',subtype:'rad',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',itemsL:{fiber:3,calc:4,mass:3},itemsR:{fiber:3,calc:4,mass:3},overallL:'pass',overallR:'pass',failsL:[],failsR:[],note:'',fails:[]});
+  mgRecords.push({type:'mg-monthly-item',subtype:'mvendor',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',aop2d:'P',aop3d:'P',note:'',fails:[]});
+  mgRecords.push({type:'mg-month-review',month:`${ly}-${lms}`,reviewer:'羅芬鈺',reviewTime:ts,opinion:'本月無異常追蹤事項'});
+}
+loadState();
+// ══ GOOGLE SHEETS 同步 ══
+function getSheetsUrl(){return mgCfg.sheetsUrl||'';}
+
+// 顯示同步狀態
+function showSyncStatus(elId,type,msg){
+  const el=document.getElementById(elId);if(!el)return;
+  const cls={ok:'sync-ok',err:'sync-err',ing:'sync-ing'};
+  el.innerHTML=`<div class="sync-status ${cls[type]||'sync-ing'}"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="${type==='ok'?'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z':type==='err'?'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z':'M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z'}"/></svg>${msg}</div>`;
+}
+
+// callSafe：統一的 fetch wrapper，使用 text/plain 避免 CORS preflight
+async function callSafe(url,payload,statusElId,successMsg){
+  if(!url){showSyncStatus(statusElId,'err','未設定 Apps Script 網址，請先至 Google Sheets 設定頁面填入');return false;}
+  showSyncStatus(statusElId,'ing','同步中，請稍候...');
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(data.ok){showSyncStatus(statusElId,'ok',successMsg+`　（${nowStamp()}）`);return true;}
+    else{showSyncStatus(statusElId,'err','同步失敗：'+data.message);return false;}
+  }catch(err){
+    showSyncStatus(statusElId,'err','網路錯誤：'+err.message);return false;
+  }
+}
+
+// 儲存 Apps Script URL
+function saveSheetsUrl(){
+  const url=document.getElementById('mg-sheets-url').value.trim();
+  mgCfg.sheetsUrl=url;saveState();
+  showSyncStatus('sheets-conn-status','ok','網址已儲存至本機');
+  showToast('Apps Script 網址已儲存');
+}
+
+// 連線測試
+async function testSheetsConnection(){
+  const url=getSheetsUrl();
+  if(!url){showToast('請先輸入 Apps Script 網址','twarn');return;}
+  showSyncStatus('sheets-conn-status','ing','連線測試中...');
+  try{
+    const res=await fetch(url+'?action=ping');
+    const data=await res.json();
+    if(data.ok) showSyncStatus('sheets-conn-status','ok','連線成功！Apps Script 回應正常');
+    else showSyncStatus('sheets-conn-status','err','連線異常：'+data.message);
+  }catch(err){
+    showSyncStatus('sheets-conn-status','err','連線失敗：'+err.message);
+  }
+}
+
+// 同步使用者至 Sheets（showMsg=true 時顯示手動同步狀態，false 時顯示在 users-sync-status）
+async function syncUsersToSheets(manual=false){
+  const url=getSheetsUrl();if(!url)return;
+  const data=sharedCfg.users.map(u=>({name:u.name,id:u.id,pw:u.pw,role:u.role,canReview:!!u.canReview,email:u.email||''}));
+  const elId=manual?'manual-sync-status':'users-sync-status';
+  await callSafe(url,{action:'syncUsers',data},elId,'使用者已同步至 Google Sheets，共 '+data.length+' 筆');
+}
+
+// 同步通知設定至 Sheets
+async function syncNotifyToSheets(manual=false){
+  const url=getSheetsUrl();if(!url)return;
+  const data=sharedCfg.users.map(u=>{
+    const p=mgCfg.notifyPrefs[u.id]||{};
+    return{name:u.name,id:u.id,email:u.email||'',weeklyDone:!!p.weeklyDone,monthlyDone:!!p.monthlyDone,fail:!!p.fail,reviewDone:!!p.reviewDone};
+  });
+  const elId=manual?'manual-sync-status':'notify-sync-status';
+  await callSafe(url,{action:'syncNotify',data},elId,'通知設定已同步至 Google Sheets，共 '+data.length+' 筆');
+}
+
+// 載入 Sheets 設定頁時填入已存 URL
+function populateSheetsSettings(){
+  const urlEl=document.getElementById('mg-sheets-url');
+  if(urlEl) urlEl.value=mgCfg.sheetsUrl||'';
+  document.getElementById('sheets-conn-status').innerHTML='';
+  document.getElementById('manual-sync-status').innerHTML='';
+}
+// ══ AUTH ══
+function doLogin(){
+  const id=document.getElementById('login-id').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const u=sharedCfg.users.find(x=>x.id===id&&x.pw===pw);
+  if(!u){document.getElementById('login-err').style.display='block';return;}
+  currentUser=u;document.getElementById('login-screen').style.display='none';enterMgApp();
+}
+function enterMgApp(){
+  const u=currentUser;
+  document.getElementById('mg-app').style.display='flex';
+  document.getElementById('mg-atb-avatar').textContent=u.name.charAt(0);
+  document.getElementById('mg-atb-name').textContent=u.name;
+  document.getElementById('mg-atb-role').textContent=u.role==='admin'?'管理者':(u.canReview?'覆核人員':'一般使用者');
+  document.getElementById('mg-nav-settings').style.display=u.role==='admin'?'flex':'none';
+  document.getElementById('mg-month-review-section').style.display=(u.role==='admin'||u.canReview)?'block':'none';
+  const t=new Date().toISOString().split('T')[0];
+  ['mgw-date','mgm-date','mgs-date'].forEach(id=>document.getElementById(id).value=t);
+  document.getElementById('mgw-staff').textContent=u.name;
+  document.getElementById('mgm-staff').textContent=u.name;
+  document.getElementById('mgs-staff').textContent=u.name;
+  const ms=t.slice(0,7);
+  document.getElementById('mg-t-start').value=ms+'-01';
+  document.getElementById('mg-t-end').value=t;
+  document.getElementById('mg-print-year').value=new Date().getFullYear();
+  document.getElementById('mg-print-month').value=ms;
+  initMgEquipDisplay();initMgVisualTable();initMgAcqTable();initMgRadTable();
+  applyMgHints();applyPhantomCfg();applyCompressCfg();applyToolCfg();
+  filteredMgRecords=[...mgRecords];renderMgDash();updateMgReviewBadge();
+}
+function doLogout(){
+  currentUser=null;
+  document.getElementById('mg-app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-id').value='';document.getElementById('login-pw').value='';
+  document.getElementById('login-err').style.display='none';
+}
+
+// ══ DATE CHANGE ══
+function onDateChange(section){
+  if(section==='weekly'){
+    ['mgw-fiber2d','mgw-calc2d','mgw-mass2d','mgw-fiber3d','mgw-calc3d','mgw-mass3d','mgw-acr-fiber','mgw-acr-calc','mgw-acr-mass','mgw-kvp2d','mgw-mas2d','mgw-dose2d','mgw-ww2d','mgw-wl2d','mgw-kvp3d','mgw-mas3d','mgw-dose3d','mgw-slice3d','mgw-ww3d','mgw-wl3d','mgw-biopsy-note','mgw-ph2d-note','mgw-ph3d-note','mgw-vendor-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['mgw-loc','mgw-needle','mgw-art2d','mgw-art3d','mgw-ff2d','mgw-ffbiopsy','mgw-ff3d','mgw-iqst'].forEach(n=>document.querySelectorAll(`input[name="${n}"]`).forEach(r=>r.checked=false));
+    ['biopsy','ph2d','ph3d','vendor'].forEach(tab=>{
+      const chk=document.getElementById(`mgw-${tab}-chk`);if(chk)chk.checked=false;
+      const stamp=document.getElementById(`mgw-${tab}-stamp`);if(stamp)stamp.classList.remove('show');
+      const box=document.getElementById(`mgw-${tab}-cbox`);if(box)box.classList.remove('confirmed');
+    });
+    ['wbiopsy','wph2d','wph3d','wacr'].forEach(id=>{
+      const bar=document.getElementById(id+'-rbar');const txt=document.getElementById(id+'-txt');const badge=document.getElementById(id+'-badge');
+      if(bar){bar.className='rbar pend';if(txt)txt.textContent='請完成評估';if(badge){badge.className='badge bn';badge.textContent='待判定';}}
+    });
+  } else if(section==='monthly'){
+    document.getElementById('mgm-disp-thick').value='';
+    document.getElementById('mgm-thick-diff').textContent='—';document.getElementById('mgm-thick-diff').style.color='';
+    document.getElementById('mgm-compress-result').innerHTML='<span class="badge bn">待填寫</span>';
+    MG_VISUAL_ITEMS.filter(x=>!x.na).forEach(item=>document.querySelectorAll(`input[name="mgm-vis-${item.key}"]`).forEach(r=>r.checked=false));
+    MG_ACQ_ITEMS.forEach(item=>document.querySelectorAll(`input[name="mgm-acq-${item.key}"]`).forEach(r=>r.checked=false));
+    MG_RAD_ITEMS.filter(x=>!x.isScore).forEach(item=>{
+      document.querySelectorAll(`input[name="mgm-rad-l-${item.key}"]`).forEach(r=>r.checked=false);
+      document.querySelectorAll(`input[name="mgm-rad-r-${item.key}"]`).forEach(r=>r.checked=false);
+    });
+    ['mgm-rad-l-fiber','mgm-rad-l-calc','mgm-rad-l-mass','mgm-rad-r-fiber','mgm-rad-r-calc','mgm-rad-r-mass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.querySelectorAll('input[name="mgm-aop2d"],input[name="mgm-aop3d"]').forEach(r=>r.checked=false);
+    ['mgm-compress-note','mgm-visual-note','mgm-acq-note','mgm-rad-note','mgm-vendor-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['compress','visual','acq','rad','mvendor'].forEach(tab=>{
+      const chk=document.getElementById(`mgm-${tab}-chk`);if(chk)chk.checked=false;
+      const stamp=document.getElementById(`mgm-${tab}-stamp`);if(stamp)stamp.classList.remove('show');
+      const box=document.getElementById(`mgm-${tab}-cbox`);if(box)box.classList.remove('confirmed');
+    });
+  } else if(section==='semi'){
+    ['mgs-manual2d','mgs-motor2d'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.querySelectorAll('input[name="mgs-p3-2d"]').forEach(r=>r.checked=false);
+    document.getElementById('mgs-note').value='';
+    const chk=document.getElementById('mgs-chk');if(chk)chk.checked=false;
+    const stamp=document.getElementById('mgs-semi-stamp');if(stamp)stamp.classList.remove('show');
+    const box=document.getElementById('mgs-cbox');if(box)box.classList.remove('confirmed');
+    document.getElementById('mgs-p1-auto').innerHTML='<span class="badge bn">待輸入</span>';
+    document.getElementById('mgs-p2-auto').innerHTML='<span class="badge bn">待輸入</span>';
+  }
+}
+
+// ══ NAVIGATION ══
+function showMgPage(p,btn){
+  document.querySelectorAll('#mg-app .page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('#mg-app .nav-btn').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('mg-page-'+p);if(el)el.classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(p==='trend') setTimeout(renderMgTrend,80);
+  if(p==='history'){filteredMgRecords=[...mgRecords];renderMgHistory(filteredMgRecords);renderMgMonthReviewList();}
+  if(p==='dash') renderMgDash();
+  if(p==='settings'){populateMgEquipSettings();populateMgScreenSettings();populateMgPhantomSettings();populateMgCompressSettings();populateMgToolSettings();populateUserTable('mg-user-tbody');populateMgNotify();populateMgHintsSettings();populateSheetsSettings();}
+}
+function showWTab(tab,btn){
+  document.querySelectorAll('[id^="wtab-"]').forEach(x=>x.style.display='none');
+  document.querySelectorAll('#mg-page-weekly .mg-itab').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('wtab-'+tab);if(el)el.style.display='block';
+  if(btn)btn.classList.add('active');
+}
+function showMTab(tab,btn){
+  document.querySelectorAll('[id^="mtab-"]').forEach(x=>x.style.display='none');
+  document.querySelectorAll('#mg-page-monthly .mg-itab').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('mtab-'+tab);if(el)el.style.display='block';
+  if(btn)btn.classList.add('active');
+}
+function showMgStab(tab,btn){
+  const parent=btn.closest('.stab-bar').parentElement;
+  parent.querySelectorAll('.stab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
+  parent.querySelectorAll('[id^="stab-mg-"]').forEach(x=>x.style.display='none');
+  const el=document.getElementById('stab-'+tab);if(el)el.style.display='block';
+  if(tab==='mg-users') populateUserTable('mg-user-tbody');
+  if(tab==='mg-notify') populateMgNotify();
+  if(tab==='mg-equip'){populateMgEquipSettings();populateMgScreenSettings();populateMgPhantomSettings();populateMgCompressSettings();populateMgToolSettings();}
+  if(tab==='mg-hints') populateMgHintsSettings();
+  if(tab==='mg-sheets') populateSheetsSettings();
+}
+
+// ══ UTILS ══
+function showToast(msg,type='tok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),3500);}
+function openModal(id){const m=document.getElementById(id);if(m)m.classList.add('open');}
+function closeModal(id){const m=document.getElementById(id);if(m)m.classList.remove('open');}
+function onTabConfirm(prefix,tab){
+  const chk=document.getElementById(`${prefix}-${tab}-chk`);
+  const stamp=document.getElementById(`${prefix}-${tab}-stamp`);
+  const box=document.getElementById(`${prefix}-${tab}-cbox`);
+  if(!chk||!stamp)return;
+  if(chk.checked){stamp.textContent=`${currentUser.name} 確認於 ${nowStamp()}`;stamp.classList.add('show');if(box)box.classList.add('confirmed');}
+  else{stamp.classList.remove('show');if(box)box.classList.remove('confirmed');}
+}
+// ══ EQUIP DISPLAY ══
+function initMgEquipDisplay(){
+  const eq=mgCfg.equip||DEF_MG_EQUIP,sc=mgCfg.screen||DEF_MG_SCREEN;
+  document.getElementById('mgm-brand-model').textContent=(eq.brand||'GE')+' / '+(eq.model||'Senographe Pristina');
+  document.getElementById('mgm-acq-brand').textContent=sc.acqBrand||'Barco';
+  document.getElementById('mgm-acq-model').textContent=sc.acqModel||'MDNC-3421';
+  document.getElementById('mgm-acq-sn').textContent=sc.acqSn||'—';
+  document.getElementById('mgm-rad-brand').textContent=sc.radBrand||'Barco';
+  document.getElementById('mgm-rad-model').textContent=sc.radModel||'MDCG-5221';
+  document.getElementById('mgm-rad-sn-l').textContent=sc.radSnL||'—';
+  document.getElementById('mgm-rad-sn-r').textContent=sc.radSnR||'—';
+  document.getElementById('mgs-brand-model').textContent=(eq.brand||'GE')+' / '+(eq.model||'Senographe Pristina');
+}
+function applyPhantomCfg(){
+  const ph=mgCfg.phantom||DEF_MG_PHANTOM;
+  document.getElementById('mg-paddle-size-2d').textContent=ph.paddleSize2d||'—';
+  document.getElementById('mg-paddle-type-2d').textContent=ph.paddleType2d||'—';
+  document.getElementById('mg-paddle-size-3d').textContent=ph.paddleSize3d||'—';
+  document.getElementById('mg-paddle-type-3d').textContent=ph.paddleType3d||'—';
+  const h2=document.getElementById('ph2d-hint-txt'),hw2=document.getElementById('wtab-ph2d-hint');
+  if(ph.hint2d){h2.textContent=ph.hint2d;hw2.style.display='block';}else hw2.style.display='none';
+  const h3=document.getElementById('ph3d-hint-txt'),hw3=document.getElementById('wtab-ph3d-hint');
+  if(ph.hint3d){h3.textContent=ph.hint3d;hw3.style.display='block';}else hw3.style.display='none';
+}
+function applyCompressCfg(){
+  const c=mgCfg.compress||DEF_MG_COMPRESS;
+  document.getElementById('mgm-actual-thick').textContent=(c.actualThick||4.5)+' cm';
+  document.getElementById('mgm-paddle-type').textContent=c.paddle||'—';
+  document.getElementById('mgm-compress-force').textContent=(c.forceKg||'—')+' kg';
+}
+function applyToolCfg(){
+  const t=mgCfg.tool||DEF_MG_TOOL;
+  document.getElementById('mgs-tool').textContent=t.tool||'—';
+  document.getElementById('mgs-unit').textContent=t.unit||'—';
+}
+function applyMgHints(){
+  const h=mgCfg.hints||DEF_MG_HINTS;
+  ['h1','h2','h3'].forEach((k,i)=>{const el=document.getElementById(`hint${i+1}-disp`);if(el)el.textContent=h[k]||'';});
+  const radHintEl=document.getElementById('rad-hint-txt');
+  const radHintBox=document.getElementById('mtab-rad-hint');
+  if(h.rad&&radHintEl){radHintEl.textContent=h.rad;radHintBox.style.display='block';}
+  else if(radHintBox) radHintBox.style.display='none';
+  const radImgWrap=document.getElementById('rad-test-img-wrap');
+  const radImgContent=document.getElementById('rad-test-img-content');
+  if(h.radImg&&radImgWrap){radImgContent.textContent=h.radImg;radImgWrap.style.display='block';}
+  else if(radImgWrap) radImgWrap.style.display='none';
+}
+
+// ══ TABLE BUILDERS ══
+function initMgVisualTable(){
+  const tb=document.getElementById('mg-visual-tbody');if(!tb)return;
+  const cc={};MG_VISUAL_ITEMS.forEach(x=>{cc[x.cat]=(cc[x.cat]||0)+1;});
+  const seen={};
+  tb.innerHTML=MG_VISUAL_ITEMS.map(item=>{
+    let cc2='';
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 10px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11.5px;background:#f8f9fc">${item.cat}</td>`;}
+    if(item.na)return `<tr>${cc2}<td style="text-align:left;font-size:12.5px;padding:8px 10px">${item.label}</td><td style="text-align:center;color:var(--gray);font-size:12px">N/A</td></tr>`;
+    return `<tr>${cc2}<td style="text-align:left;font-size:12.5px;padding:8px 10px">${item.label}</td><td><div class="pf-wrap"><input type="radio" name="mgm-vis-${item.key}" id="mgm-vis-${item.key}p" value="P" onchange="evalMgVisual()"><label for="mgm-vis-${item.key}p">P</label><input type="radio" name="mgm-vis-${item.key}" id="mgm-vis-${item.key}f" value="F" onchange="evalMgVisual()"><label for="mgm-vis-${item.key}f">F</label></div></td></tr>`;
+  }).join('');
+}
+function initMgAcqTable(){
+  const tb=document.getElementById('mg-acq-tbody');if(!tb)return;
+  const cc={};MG_ACQ_ITEMS.forEach(x=>{cc[x.cat]=(cc[x.cat]||0)+1;});
+  const seen={};
+  tb.innerHTML=MG_ACQ_ITEMS.map(item=>{
+    let cc2='';
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 10px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11.5px;background:#f8f9fc">${item.cat}</td>`;}
+    return `<tr>${cc2}<td style="text-align:left;font-size:12.5px;padding:8px 10px">${item.label}</td><td><div class="pf-wrap"><input type="radio" name="mgm-acq-${item.key}" id="mgm-acq-${item.key}p" value="P" onchange="evalMgAcq()"><label for="mgm-acq-${item.key}p">P</label><input type="radio" name="mgm-acq-${item.key}" id="mgm-acq-${item.key}f" value="F" onchange="evalMgAcq()"><label for="mgm-acq-${item.key}f">F</label></div></td></tr>`;
+  }).join('');
+}
+function initMgRadTable(){
+  const tb=document.getElementById('mg-rad-tbody');if(!tb)return;
+  const cc={};MG_RAD_ITEMS.forEach(x=>{cc[x.cat]=(cc[x.cat]||0)+1;});
+  const seen={};
+  tb.innerHTML=MG_RAD_ITEMS.map(item=>{
+    let cc2='';
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 10px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11.5px;background:#f8f9fc">${item.cat}</td>`;}
+    if(item.isScore){
+      return `<tr>${cc2}<td style="text-align:left;font-size:12px;padding:8px 10px">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
+        <td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+          <input type="number" id="mgm-rad-l-fiber" placeholder="纖維" min="0" max="6" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <input type="number" id="mgm-rad-l-calc" placeholder="鈣化" min="0" max="5" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <input type="number" id="mgm-rad-l-mass" placeholder="腫塊" min="0" max="4" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <div id="mgm-rad-l-score-badge"><span class="badge bn" style="font-size:10px">待輸入</span></div>
+        </div></td>
+        <td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+          <input type="number" id="mgm-rad-r-fiber" placeholder="纖維" min="0" max="6" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <input type="number" id="mgm-rad-r-calc" placeholder="鈣化" min="0" max="5" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <input type="number" id="mgm-rad-r-mass" placeholder="腫塊" min="0" max="4" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
+          <div id="mgm-rad-r-score-badge"><span class="badge bn" style="font-size:10px">待輸入</span></div>
+        </div></td></tr>`;
+    }
+    return `<tr>${cc2}<td style="text-align:left;font-size:12.5px;padding:8px 10px">${item.label}</td>
+      <td><div class="pf-wrap"><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}p">P</label><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}f">F</label></div></td>
+      <td><div class="pf-wrap"><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}p">P</label><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}f">F</label></div></td></tr>`;
+  }).join('');
+}
+// ══ EVAL ══
+function setRbar(id,txtId,badgeId,pass,pendTxt,passTxt,failTxt){
+  const bar=document.getElementById(id),txt=document.getElementById(txtId),badge=document.getElementById(badgeId);if(!bar)return;
+  if(pass===null){bar.className='rbar pend';if(txt)txt.textContent=pendTxt;if(badge){badge.className='badge bn';badge.textContent='待判定';}}
+  else if(pass){bar.className='rbar pass';if(txt)txt.textContent=passTxt;if(badge){badge.className='badge bp';badge.textContent='合格(P)';}}
+  else{bar.className='rbar fail';if(txt)txt.textContent=failTxt;if(badge){badge.className='badge bf';badge.textContent='不合格(F)';}}
+}
+function evalWBiopsy(){
+  const loc=document.querySelector('input[name="mgw-loc"]:checked');
+  const needle=document.querySelector('input[name="mgw-needle"]:checked');
+  if(!loc||!needle){setRbar('wbiopsy-rbar','wbiopsy-txt','wbiopsy-badge',null,'請完成評估','','');return;}
+  const fails=[];if(loc.value==='F')fails.push('定位準確度不合格');if(needle.value==='F')fails.push('切片針支撐架準確度不合格');
+  setRbar('wbiopsy-rbar','wbiopsy-txt','wbiopsy-badge',fails.length===0,'','兩項均合格',fails.join('、'));
+}
+function evalWPh2d(){
+  const f=parseFloat(document.getElementById('mgw-fiber2d').value),c=parseFloat(document.getElementById('mgw-calc2d').value),m=parseFloat(document.getElementById('mgw-mass2d').value),art=document.querySelector('input[name="mgw-art2d"]:checked');
+  if(isNaN(f)||isNaN(c)||isNaN(m)||!art){setRbar('wph2d-rbar','wph2d-txt','wph2d-badge',null,'請輸入評分','','');return;}
+  const fails=[];if(f<2)fails.push(`纖維不足(${f}<2)`);if(c<3)fails.push(`鈣化點群不足(${c}<3)`);if(m<2)fails.push(`腫塊物不足(${m}<2)`);if(art.value==='F')fails.push('有干擾假影');
+  setRbar('wph2d-rbar','wph2d-txt','wph2d-badge',fails.length===0,'',`纖維${f}、鈣化${c}、腫塊${m}，合格`,fails.join('、'));
+}
+function evalWPh3d(){
+  const f=parseFloat(document.getElementById('mgw-fiber3d').value),c=parseFloat(document.getElementById('mgw-calc3d').value),m=parseFloat(document.getElementById('mgw-mass3d').value),art=document.querySelector('input[name="mgw-art3d"]:checked');
+  if(isNaN(f)||isNaN(c)||isNaN(m)||!art){setRbar('wph3d-rbar','wph3d-txt','wph3d-badge',null,'請輸入評分','','');return;}
+  const fails=[];if(f<2)fails.push(`纖維不足(${f}<2)`);if(c<3)fails.push(`鈣化點群不足(${c}<3)`);if(m<2)fails.push(`腫塊物不足(${m}<2)`);if(art.value==='F')fails.push('有干擾假影');
+  setRbar('wph3d-rbar','wph3d-txt','wph3d-badge',fails.length===0,'',`纖維${f}、鈣化${c}、腫塊${m}，合格`,fails.join('、'));
+}
+function evalWAcr(){
+  const f=parseFloat(document.getElementById('mgw-acr-fiber').value),c=parseFloat(document.getElementById('mgw-acr-calc').value),m=parseFloat(document.getElementById('mgw-acr-mass').value);
+  if(isNaN(f)||isNaN(c)||isNaN(m)){setRbar('wacr-rbar','wacr-txt','wacr-badge',null,'請輸入評分','','');return;}
+  const fails=[];if(f<4)fails.push(`纖維不足(${f}<4)`);if(c<3)fails.push(`鈣化點群不足(${c}<3)`);if(m<3)fails.push(`腫塊物不足(${m}<3)`);
+  setRbar('wacr-rbar','wacr-txt','wacr-badge',fails.length===0,'',`纖維${f}、鈣化${c}、腫塊${m}，合格`,fails.join('、'));
+}
+function calcCompressDev(){
+  const disp=parseFloat(document.getElementById('mgm-disp-thick').value);
+  const actual=parseFloat((mgCfg.compress||DEF_MG_COMPRESS).actualThick)||4.5;
+  const diffEl=document.getElementById('mgm-thick-diff'),resEl=document.getElementById('mgm-compress-result');
+  if(isNaN(disp)){diffEl.textContent='—';diffEl.style.color='';resEl.innerHTML='<span class="badge bn">待填寫</span>';return;}
+  const diff=disp-actual,ok=Math.abs(diff)<=0.5;
+  diffEl.textContent=(diff>=0?'+':'')+diff.toFixed(2)+' cm';diffEl.style.color=ok?'var(--green)':'var(--red)';
+  resEl.innerHTML=`<span class="badge ${ok?'bp':'bf'}">${ok?'合格 (P)':'不合格 (F)'}</span>`;
+}
+function evalMgVisual(){
+  const actives=MG_VISUAL_ITEMS.filter(x=>!x.na),fails=[];
+  const allDone=actives.every(item=>{const c=document.querySelector(`input[name="mgm-vis-${item.key}"]:checked`);if(c&&c.value==='F')fails.push(item.label.replace('*',''));return!!c;});
+  if(!allDone){setRbar('mgm-visual-rbar','mgm-visual-txt','mgm-visual-badge',null,'尚有未評估項目','','');return;}
+  setRbar('mgm-visual-rbar','mgm-visual-txt','mgm-visual-badge',fails.length===0,'','所有項目合格',fails.join('、'));
+}
+function evalMgAcq(){
+  const fails=[];
+  const allDone=MG_ACQ_ITEMS.every(item=>{const c=document.querySelector(`input[name="mgm-acq-${item.key}"]:checked`);if(c&&c.value==='F')fails.push(item.label.slice(0,15));return!!c;});
+  if(!allDone){setRbar('mgm-acq-rbar','mgm-acq-txt','mgm-acq-badge',null,'尚有未評估項目','','');return;}
+  setRbar('mgm-acq-rbar','mgm-acq-txt','mgm-acq-badge',fails.length===0,'','所有項目合格',fails.join('、'));
+}
+function evalMgRad(){
+  ['l','r'].forEach(side=>{
+    const ns=MG_RAD_ITEMS.filter(x=>!x.isScore),fails=[];
+    const allDone=ns.every(item=>{const c=document.querySelector(`input[name="mgm-rad-${side}-${item.key}"]:checked`);if(c&&c.value==='F')fails.push(item.label.slice(0,12));return!!c;});
+    const f=parseFloat(document.getElementById(`mgm-rad-${side}-fiber`)?.value);
+    const c2=parseFloat(document.getElementById(`mgm-rad-${side}-calc`)?.value);
+    const m=parseFloat(document.getElementById(`mgm-rad-${side}-mass`)?.value);
+    const sb=document.getElementById(`mgm-rad-${side}-score-badge`);
+    if(!isNaN(f)&&!isNaN(c2)&&!isNaN(m)){
+      const sf=[];if(f<2)sf.push(`纖維不足(${f}<2)`);if(c2<3)sf.push(`鈣化點群不足(${c2}<3)`);if(m<2)sf.push(`腫塊物不足(${m}<2)`);
+      if(sb)sb.innerHTML=sf.length===0?`<span class="badge bp" style="font-size:10px">合格</span>`:`<span class="badge bf" style="font-size:10px">${sf.join('、')}</span>`;
+      fails.push(...sf);
+    } else{if(sb)sb.innerHTML='<span class="badge bn" style="font-size:10px">待輸入</span>';}
+    if(!allDone||isNaN(f)||isNaN(c2)||isNaN(m)){setRbar(`mgm-rad-${side}-rbar`,`mgm-rad-${side}-txt`,`mgm-rad-${side}-badge`,null,'待判定','','');return;}
+    setRbar(`mgm-rad-${side}-rbar`,`mgm-rad-${side}-txt`,`mgm-rad-${side}-badge`,fails.length===0,'','合格',fails.join('、'));
+  });
+}
+function evalSemiannual(){
+  const manual=parseFloat(document.getElementById('mgs-manual2d').value);
+  const motor=parseFloat(document.getElementById('mgs-motor2d').value);
+  const p1El=document.getElementById('mgs-p1-auto'),p2El=document.getElementById('mgs-p2-auto');
+  let p1pass=null,p2pass=null;
+  if(!isNaN(manual)&&manual>0){p1pass=manual>=11.1;p1El.innerHTML=p1pass?`<span class="badge bp">合格 (P) — ${manual} daN</span>`:`<span class="badge bf">不合格 (F) — ${manual} daN，須≥11.1</span>`;}
+  else p1El.innerHTML='<span class="badge bn">待輸入</span>';
+  if(!isNaN(motor)&&motor>0){p2pass=motor>=11.1&&motor<=20.2;p2El.innerHTML=p2pass?`<span class="badge bp">合格 (P) — ${motor} daN</span>`:`<span class="badge bf">不合格 (F) — ${motor} daN，須11.1~20.2</span>`;}
+  else p2El.innerHTML='<span class="badge bn">待輸入</span>';
+  const p3=document.querySelector('input[name="mgs-p3-2d"]:checked');
+  if(p1pass===null||p2pass===null||!p3){setRbar('mgs-rbar','mgs-rbar-txt','mgs-badge',null,'請完成測試','','');return;}
+  const fails=[];
+  if(!p1pass)fails.push(`手動微調壓迫力不合格(${manual} daN < 11.1)`);
+  if(!p2pass)fails.push(`電動驅動初始壓迫力不合格(${motor} daN，須11.1~20.2)`);
+  if(p3.value==='F')fails.push('取像過程壓迫力不足');
+  setRbar('mgs-rbar','mgs-rbar-txt','mgs-badge',fails.length===0,'','全部合格',fails.join('、'));
+}
+// ══ SAVE WEEKLY ══
+function saveWTab(tabName){
+  const d=document.getElementById('mgw-date').value;
+  if(!d){showToast('請選擇測試日期','terr');return;}
+  if(!document.getElementById(`mgw-${tabName}-chk`)?.checked){showToast('請先勾選確認再儲存','terr');return;}
+  const g=id=>document.getElementById(id),gv=id=>parseFloat(g(id)?.value)||null,gR=n=>{const c=document.querySelector(`input[name="${n}"]:checked`);return c?c.value:null;};
+  let rec=null,label='';
+  if(tabName==='biopsy'){
+    label='Biopsy定位';const loc=gR('mgw-loc'),needle=gR('mgw-needle');
+    if(!loc||!needle){showToast('請完成 Biopsy 評估','terr');return;}
+    const fails=[];if(loc==='F')fails.push('定位準確度不合格');if(needle==='F')fails.push('切片針支撐架準確度不合格');
+    rec={type:'mg-weekly',subtype:'biopsy',date:d,staff:currentUser.name,savedAt:nowStamp(),loc,needle,note:g('mgw-biopsy-note')?.value||'',overall:fails.length===0?'pass':'fail',fails};
+  } else if(tabName==='ph2d'){
+    label='假體影像品質 — 2D模式';const f=gv('mgw-fiber2d'),c=gv('mgw-calc2d'),m=gv('mgw-mass2d'),art=gR('mgw-art2d');
+    if(f===null||c===null||m===null||!art){showToast('請完成 2D 評估','terr');return;}
+    const fails=[];if(f<2)fails.push(`纖維不足(${f}<2)`);if(c<3)fails.push(`鈣化點群不足(${c}<3)`);if(m<2)fails.push(`腫塊物不足(${m}<2)`);if(art==='F')fails.push('有干擾假影');
+    rec={type:'mg-weekly',subtype:'ph2d',date:d,staff:currentUser.name,savedAt:nowStamp(),fiber:f,calc:c,mass:m,artifact:art,kvp:gv('mgw-kvp2d'),mas:gv('mgw-mas2d'),dose:gv('mgw-dose2d'),ww:gv('mgw-ww2d'),wl:gv('mgw-wl2d'),note:g('mgw-ph2d-note')?.value||'',overall:fails.length===0?'pass':'fail',fails};
+  } else if(tabName==='ph3d'){
+    label='假體影像品質 — 3D模式';const f=gv('mgw-fiber3d'),c=gv('mgw-calc3d'),m=gv('mgw-mass3d'),art=gR('mgw-art3d');
+    if(f===null||c===null||m===null||!art){showToast('請完成 3D 評估','terr');return;}
+    const fails=[];if(f<2)fails.push(`纖維不足(${f}<2)`);if(c<3)fails.push(`鈣化點群不足(${c}<3)`);if(m<2)fails.push(`腫塊物不足(${m}<2)`);if(art==='F')fails.push('有干擾假影');
+    rec={type:'mg-weekly',subtype:'ph3d',date:d,staff:currentUser.name,savedAt:nowStamp(),fiber:f,calc:c,mass:m,artifact:art,kvp:gv('mgw-kvp3d'),mas:gv('mgw-mas3d'),dose:gv('mgw-dose3d'),slice:gv('mgw-slice3d'),ww:gv('mgw-ww3d'),wl:gv('mgw-wl3d'),note:g('mgw-ph3d-note')?.value||'',overall:fails.length===0?'pass':'fail',fails};
+  } else if(tabName==='vendor'){
+    label='原廠特定校正及測試（每週）';const af=gv('mgw-acr-fiber'),ac=gv('mgw-acr-calc'),am=gv('mgw-acr-mass');
+    if(af===null||ac===null||am===null){showToast('請完成 ACR 評分','terr');return;}
+    const fails=[];if(af<4)fails.push(`纖維不足(${af}<4)`);if(ac<3)fails.push(`鈣化點群不足(${ac}<3)`);if(am<3)fails.push(`腫塊物不足(${am}<3)`);
+    rec={type:'mg-weekly',subtype:'vendor',date:d,staff:currentUser.name,savedAt:nowStamp(),ff2d:gR('mgw-ff2d'),ffBiopsy:gR('mgw-ffbiopsy'),ff3d:gR('mgw-ff3d'),iqst:gR('mgw-iqst'),acrFiber:af,acrCalc:ac,acrMass:am,note:g('mgw-vendor-note')?.value||'',overall:fails.length===0?'pass':'fail',fails};
+  }
+  if(!rec)return;
+  const existIdx=mgRecords.findIndex(r=>r.type==='mg-weekly'&&r.subtype===rec.subtype&&r.date===d);
+  if(existIdx>=0){
+    pendingSaveData={rec,dupIdx:existIdx};
+    document.getElementById('dup-detail').innerHTML=`<p><strong>${label}</strong> 在 <strong>${d}</strong> 已有紀錄（${mgRecords[existIdx].staff}，${mgRecords[existIdx].savedAt}）</p>`;
+    openModal('dup-modal');
+  } else {mgRecords.push(rec);saveState();updateMgReviewBadge();renderMgDash();showToast(`✓ ${label} 已儲存`);}
+}
+function clearWTab(tabName){
+  if(!confirm('確定要清除此項目的填寫資料嗎？'))return;
+  const rn={'biopsy':['mgw-loc','mgw-needle'],'ph2d':['mgw-art2d'],'ph3d':['mgw-art3d'],'vendor':['mgw-ff2d','mgw-ffbiopsy','mgw-ff3d','mgw-iqst']};
+  const ii={'biopsy':['mgw-biopsy-note'],'ph2d':['mgw-kvp2d','mgw-mas2d','mgw-dose2d','mgw-ww2d','mgw-wl2d','mgw-fiber2d','mgw-calc2d','mgw-mass2d','mgw-ph2d-note'],'ph3d':['mgw-kvp3d','mgw-mas3d','mgw-dose3d','mgw-slice3d','mgw-ww3d','mgw-wl3d','mgw-fiber3d','mgw-calc3d','mgw-mass3d','mgw-ph3d-note'],'vendor':['mgw-acr-fiber','mgw-acr-calc','mgw-acr-mass','mgw-vendor-note']};
+  (rn[tabName]||[]).forEach(n=>document.querySelectorAll(`input[name="${n}"]`).forEach(r=>r.checked=false));
+  (ii[tabName]||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const chk=document.getElementById(`mgw-${tabName}-chk`);if(chk)chk.checked=false;
+  const stamp=document.getElementById(`mgw-${tabName}-stamp`);if(stamp)stamp.classList.remove('show');
+  const box=document.getElementById(`mgw-${tabName}-cbox`);if(box)box.classList.remove('confirmed');
+  showToast('已清除，可重新填寫');
+}
+
+// ══ SAVE MONTHLY ══
+function saveMTab(tabName){
+  const d=document.getElementById('mgm-date').value;
+  if(!d){showToast('請選擇測試日期','terr');return;}
+  if(!document.getElementById(`mgm-${tabName}-chk`)?.checked){showToast('請先勾選確認再儲存','terr');return;}
+  const gR=n=>{const c=document.querySelector(`input[name="${n}"]:checked`);return c?c.value:null;};
+  let rec=null,label='';
+  if(tabName==='compress'){
+    label='壓迫厚度顯示準確性';const disp=parseFloat(document.getElementById('mgm-disp-thick').value);
+    if(isNaN(disp)){showToast('請填寫壓迫顯示厚度','terr');return;}
+    const actual=parseFloat((mgCfg.compress||DEF_MG_COMPRESS).actualThick)||4.5,diff=disp-actual,pass=Math.abs(diff)<=0.5;
+    rec={type:'mg-monthly-item',subtype:'compress',date:d,staff:currentUser.name,savedAt:nowStamp(),dispThick:disp,diff,overall:pass?'pass':'fail',fails:pass?[]:[`偏差${diff>=0?'+':''}${diff.toFixed(2)} cm，超過 ±0.5 cm`],note:document.getElementById('mgm-compress-note').value||''};
+  } else if(tabName==='visual'){
+    label='目視檢查';const actives=MG_VISUAL_ITEMS.filter(x=>!x.na),items={},fails=[];
+    actives.forEach(item=>{const c=document.querySelector(`input[name="mgm-vis-${item.key}"]:checked`);items[item.key]=c?c.value:'—';if(c&&c.value==='F')fails.push(item.label.replace('*',''));});
+    rec={type:'mg-monthly-item',subtype:'visual',date:d,staff:currentUser.name,savedAt:nowStamp(),items,overall:fails.length===0?'pass':'fail',fails,note:document.getElementById('mgm-visual-note').value||''};
+  } else if(tabName==='acq'){
+    label='擷像工作站品管';const items={},fails=[];
+    MG_ACQ_ITEMS.forEach(item=>{const c=document.querySelector(`input[name="mgm-acq-${item.key}"]:checked`);items[item.key]=c?c.value:'—';if(c&&c.value==='F')fails.push(item.label.slice(0,15));});
+    rec={type:'mg-monthly-item',subtype:'acq',date:d,staff:currentUser.name,savedAt:nowStamp(),items,overall:fails.length===0?'pass':'fail',fails,note:document.getElementById('mgm-acq-note').value||''};
+  } else if(tabName==='rad'){
+    label='放射科醫師閱片工作站品管';const ns=MG_RAD_ITEMS.filter(x=>!x.isScore),iL={},iR={},fL=[],fR=[];
+    ns.forEach(item=>{
+      const cl=document.querySelector(`input[name="mgm-rad-l-${item.key}"]:checked`);iL[item.key]=cl?cl.value:'—';if(cl&&cl.value==='F')fL.push(item.label.slice(0,12));
+      const cr=document.querySelector(`input[name="mgm-rad-r-${item.key}"]:checked`);iR[item.key]=cr?cr.value:'—';if(cr&&cr.value==='F')fR.push(item.label.slice(0,12));
+    });
+    const lF=parseFloat(document.getElementById('mgm-rad-l-fiber')?.value),lC=parseFloat(document.getElementById('mgm-rad-l-calc')?.value),lM=parseFloat(document.getElementById('mgm-rad-l-mass')?.value);
+    const rF=parseFloat(document.getElementById('mgm-rad-r-fiber')?.value),rC=parseFloat(document.getElementById('mgm-rad-r-calc')?.value),rM=parseFloat(document.getElementById('mgm-rad-r-mass')?.value);
+    iL.fiber=isNaN(lF)?null:lF;iL.calc=isNaN(lC)?null:lC;iL.mass=isNaN(lM)?null:lM;
+    iR.fiber=isNaN(rF)?null:rF;iR.calc=isNaN(rC)?null:rC;iR.mass=isNaN(rM)?null:rM;
+    if(!isNaN(lF)&&lF<2)fL.push(`纖維不足(${lF}<2)`);if(!isNaN(lC)&&lC<3)fL.push(`鈣化點群不足(${lC}<3)`);if(!isNaN(lM)&&lM<2)fL.push(`腫塊物不足(${lM}<2)`);
+    if(!isNaN(rF)&&rF<2)fR.push(`纖維不足(${rF}<2)`);if(!isNaN(rC)&&rC<3)fR.push(`鈣化點群不足(${rC}<3)`);if(!isNaN(rM)&&rM<2)fR.push(`腫塊物不足(${rM}<2)`);
+    const vaL=document.querySelector('input[name="mgm-rad-l-vendor_auto"]:checked')?.value||'N/A';
+    const vaR=document.querySelector('input[name="mgm-rad-r-vendor_auto"]:checked')?.value||'N/A';
+    iL.vendor_auto=vaL;iR.vendor_auto=vaR;
+    if(vaL==='F')fL.push('廠商自動測試不合格');if(vaR==='F')fR.push('廠商自動測試不合格');
+    rec={type:'mg-monthly-item',subtype:'rad',date:d,staff:currentUser.name,savedAt:nowStamp(),itemsL:iL,itemsR:iR,overallL:fL.length===0?'pass':'fail',overallR:fR.length===0?'pass':'fail',overall:(fL.length===0&&fR.length===0)?'pass':'fail',fails:[...fL.map(f=>`左:${f}`),...fR.map(f=>`右:${f}`)],failsL:fL,failsR:fR,note:document.getElementById('mgm-rad-note').value||''};
+  } else if(tabName==='mvendor'){
+    label='原廠特定校正及測試（每月）';const aop2d=gR('mgm-aop2d'),aop3d=gR('mgm-aop3d');
+    const fails=[];if(aop2d==='F')fails.push('AOP模式2D不合格');if(aop3d==='F')fails.push('自動最佳化3D不合格');
+    rec={type:'mg-monthly-item',subtype:'mvendor',date:d,staff:currentUser.name,savedAt:nowStamp(),aop2d:aop2d||'—',aop3d:aop3d||'—',overall:fails.length===0?'pass':'fail',fails,note:document.getElementById('mgm-vendor-note').value||''};
+  }
+  if(!rec)return;
+  const existIdx=mgRecords.findIndex(r=>r.type==='mg-monthly-item'&&r.subtype===rec.subtype&&r.date===d);
+  if(existIdx>=0){
+    pendingSaveData={rec,dupIdx:existIdx};
+    document.getElementById('dup-detail').innerHTML=`<p><strong>${label}</strong> 在 <strong>${d}</strong> 已有紀錄（${mgRecords[existIdx].staff}，${mgRecords[existIdx].savedAt}）</p>`;
+    openModal('dup-modal');
+  } else {mgRecords.push(rec);saveState();renderMgDash();showToast(`✓ ${label} 已儲存`);}
+}
+function clearMTab(tabName){
+  if(!confirm('確定要清除此項目的填寫資料嗎？'))return;
+  if(tabName==='compress'){document.getElementById('mgm-disp-thick').value='';document.getElementById('mgm-thick-diff').textContent='—';document.getElementById('mgm-compress-result').innerHTML='<span class="badge bn">待填寫</span>';document.getElementById('mgm-compress-note').value='';}
+  else if(tabName==='visual'){MG_VISUAL_ITEMS.filter(x=>!x.na).forEach(item=>document.querySelectorAll(`input[name="mgm-vis-${item.key}"]`).forEach(r=>r.checked=false));document.getElementById('mgm-visual-note').value='';}
+  else if(tabName==='acq'){MG_ACQ_ITEMS.forEach(item=>document.querySelectorAll(`input[name="mgm-acq-${item.key}"]`).forEach(r=>r.checked=false));document.getElementById('mgm-acq-note').value='';}
+  else if(tabName==='rad'){
+    MG_RAD_ITEMS.filter(x=>!x.isScore).forEach(item=>{document.querySelectorAll(`input[name="mgm-rad-l-${item.key}"]`).forEach(r=>r.checked=false);document.querySelectorAll(`input[name="mgm-rad-r-${item.key}"]`).forEach(r=>r.checked=false);});
+    ['mgm-rad-l-fiber','mgm-rad-l-calc','mgm-rad-l-mass','mgm-rad-r-fiber','mgm-rad-r-calc','mgm-rad-r-mass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('mgm-rad-note').value='';
+  } else if(tabName==='mvendor'){
+    document.querySelectorAll('input[name="mgm-aop2d"],input[name="mgm-aop3d"]').forEach(r=>r.checked=false);
+    document.getElementById('mgm-vendor-note').value='';
+  }
+  const chk=document.getElementById(`mgm-${tabName}-chk`);if(chk)chk.checked=false;
+  const stamp=document.getElementById(`mgm-${tabName}-stamp`);if(stamp)stamp.classList.remove('show');
+  const box=document.getElementById(`mgm-${tabName}-cbox`);if(box)box.classList.remove('confirmed');
+  showToast('已清除，可重新填寫');
+}
+
+// ══ SAVE SEMIANNUAL ══
+function saveMgSemiannual(){
+  const d=document.getElementById('mgs-date').value;
+  if(!d){showToast('請選擇測試日期','terr');return;}
+  if(!document.getElementById('mgs-chk')?.checked){showToast('請先勾選確認再儲存','terr');return;}
+  const mo=parseInt(d.slice(5,7));
+  if(mo!==6&&mo!==12){showToast('每半年品保僅在6月或12月執行','twarn');return;}
+  const manual=parseFloat(document.getElementById('mgs-manual2d').value),motor=parseFloat(document.getElementById('mgs-motor2d').value);
+  if(isNaN(manual)||isNaN(motor)){showToast('請填寫壓迫力數值','terr');return;}
+  const p3=document.querySelector('input[name="mgs-p3-2d"]:checked');
+  if(!p3){showToast('請完成第3項評估','terr');return;}
+  const p1pass=manual>=11.1,p2pass=motor>=11.1&&motor<=20.2,p3pass=p3.value==='P';
+  const fails=[];
+  if(!p1pass)fails.push(`手動微調壓迫力不合格(${manual} daN < 11.1)`);
+  if(!p2pass)fails.push(`電動驅動初始壓迫力不合格(${motor} daN，須11.1~20.2)`);
+  if(!p3pass)fails.push('取像過程壓迫力不足');
+  const rec={type:'mg-semiannual',date:d,staff:currentUser.name,savedAt:nowStamp(),overall:fails.length===0?'pass':'fail',manual2d:manual,motorN:motor,p3:p3.value,fails,note:document.getElementById('mgs-note').value||''};
+  const moStr=d.slice(0,7),dupIdx=mgRecords.findIndex(r=>r.type==='mg-semiannual'&&r.date?.startsWith(moStr));
+  if(dupIdx>=0){pendingSaveData={rec,dupIdx};document.getElementById('dup-detail').innerHTML=`<p>本月（${moStr}）已有半年品保紀錄（${mgRecords[dupIdx].staff}）</p>`;openModal('dup-modal');return;}
+  mgRecords.push(rec);saveState();renderMgDash();showToast('✓ 每半年品保已儲存');
+}
+function clearMgSemiannual(){if(!confirm('確定要清除嗎？'))return;onDateChange('semi');showToast('已清除');}
+function dupAction(action){
+  closeModal('dup-modal');if(!pendingSaveData)return;
+  const{rec,dupIdx}=pendingSaveData;
+  if(action==='overwrite')mgRecords[dupIdx]=rec;else mgRecords.push(rec);
+  saveState();updateMgReviewBadge();renderMgDash();
+  const sl={biopsy:'Biopsy定位',ph2d:'假體影像品質 — 2D模式',ph3d:'假體影像品質 — 3D模式',vendor:'原廠特定校正（每週）',compress:'壓迫厚度顯示準確性',visual:'目視檢查',acq:'擷像工作站品管',rad:'閱片工作站品管',mvendor:'原廠特定校正（每月）'};
+  showToast(`✓ ${sl[rec.subtype]||rec.type} 已儲存`);pendingSaveData=null;
+}
+// ══ DASHBOARD ══
+function renderMgDash(){
+  const today=new Date(),yr=today.getFullYear(),mo=today.getMonth()+1;
+  const moStr=`${yr}-${String(mo).padStart(2,'0')}`;
+  const weekly=mgRecords.filter(r=>r.type==='mg-weekly'&&r.date&&r.date.startsWith(moStr));
+  const monthly=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.date&&r.date.startsWith(moStr));
+  const semi=mgRecords.filter(r=>r.type==='mg-semiannual'&&r.date&&r.date.startsWith(moStr));
+  const allRec=mgRecords.filter(r=>r.date&&r.date.startsWith(moStr));
+  const failCount=allRec.filter(r=>r.overall==='fail').length;
+  const subtypes=['ph2d','ph3d','biopsy','vendor'];const wDates=[...new Set(weekly.filter(r=>subtypes.includes(r.subtype)).map(r=>r.date))];
+  document.getElementById('mg-dash-date').textContent=`${yr}年${mo}月　今日：${today.toLocaleDateString('zh-TW')}`;
+  document.getElementById('mg-dash-stats').innerHTML=`
+    <div class="dash-stat ds-pink"><div class="ds-l">本月每週品保次數</div><div class="ds-v">${wDates.length}</div><div class="ds-sub">含 2D/3D/Biopsy</div></div>
+    <div class="dash-stat ds-blue"><div class="ds-l">本月月品保完成項目</div><div class="ds-v">${[...new Set(monthly.map(r=>r.subtype))].length}/5</div><div class="ds-sub">共5個子項目</div></div>
+    <div class="dash-stat ${failCount>0?'ds-red':'ds-green'}"><div class="ds-l">本月不合格次數</div><div class="ds-v">${failCount}</div><div class="ds-sub">${failCount>0?'需追蹤處理':'全部合格'}</div></div>
+    <div class="dash-stat ds-amber"><div class="ds-l">每半年品保</div><div class="ds-v">${semi.length>0?'已完成':'未完成'}</div><div class="ds-sub">${(mo===6||mo===12)?'本月需執行':'非執行月份'}</div></div>`;
+  const alerts=[];
+  const fails=allRec.filter(r=>r.overall==='fail');
+  if(fails.length>0) fails.forEach(r=>alerts.push({type:'fail',msg:`不合格：${r.date} ${r.subtype||r.type}`}));
+  if(wDates.length<3) alerts.push({type:'warn',msg:`本月每週品保僅 ${wDates.length} 次，建議確認是否已完成`});
+  const mSubs=['compress','visual','acq','rad','mvendor'];const doneSubs=[...new Set(monthly.map(r=>r.subtype))];
+  const missSubs=mSubs.filter(s=>!doneSubs.includes(s));
+  if(missSubs.length>0){const subLabel={compress:'壓迫厚度',visual:'目視檢查',acq:'擷像工作站',rad:'閱片工作站',mvendor:'原廠特定校正（月）'};alerts.push({type:'warn',msg:`本月每月品保未完成：${missSubs.map(s=>subLabel[s]).join('、')}`});}
+  if(alerts.length===0) alerts.push({type:'ok',msg:'本月品保狀況良好，無異常警示'});
+  document.getElementById('mg-dash-alerts').innerHTML=alerts.map(a=>`<div class="alert-item alert-${a.type==='fail'?'fail':a.type==='warn'?'warn':'ok'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="${a.type==='ok'?'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z':'M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'}"/></svg>${a.msg}</div>`).join('');
+}
+// ══ MONTH REVIEW ══
+function getMgPendingMonths(){
+  const allWeeklyMonths=[...new Set(mgRecords.filter(r=>r.type==='mg-weekly').map(r=>r.date?.slice(0,7)).filter(Boolean))].sort();
+  const reviewedMonths=new Set(mgRecords.filter(r=>r.type==='mg-month-review').map(r=>r.month));
+  return allWeeklyMonths.filter(m=>!reviewedMonths.has(m));
+}
+function updateMgReviewBadge(){
+  const pending=getMgPendingMonths();
+  const badge=document.getElementById('mg-review-badge');
+  if(badge){badge.textContent=pending.length;badge.style.display=pending.length>0?'inline':'none';}
+  const pb=document.getElementById('mg-pending-badge');if(pb)pb.textContent=pending.length+'個月';
+}
+function renderMgMonthReviewList(){
+  const pending=getMgPendingMonths();
+  const container=document.getElementById('mg-month-review-list');if(!container)return;
+  if(pending.length===0){container.innerHTML='<div class="alert-item alert-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>目前無待覆核月份</div>';return;}
+  container.innerHTML=pending.map(mo=>{
+    const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.date?.startsWith(mo));
+    const wDates=[...new Set(recs.map(r=>r.date))].sort();
+    const failCount=recs.filter(r=>r.overall==='fail').length;
+    return `<div class="month-review-item"><div class="mri-header"><div class="mri-title">📅 ${mo} 月份</div><div class="mri-stats"><span>共 ${wDates.length} 週</span><span>${failCount>0?`<span style="color:var(--red)">${failCount} 次不合格</span>`:'<span style="color:var(--green)">全部合格</span>'}</span></div></div><div class="mri-stats" style="margin-bottom:10px;font-size:12px">紀錄日期：${wDates.join('、')}</div><button class="btn btn-pu btn-sm" onclick="openMgReview('${mo}')">開始月彙整覆核</button></div>`;
+  }).join('');
+}
+function openMgReview(mo){
+  currentMrMonth=mo;
+  const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.date?.startsWith(mo));
+  const wDates=[...new Set(recs.map(r=>r.date))].sort();
+  const failRecs=recs.filter(r=>r.overall==='fail');
+  let summaryHtml=`<div style="font-size:13px;margin-bottom:12px"><strong>覆核月份：</strong>${mo}　<strong>品保週數：</strong>${wDates.length}　<strong>不合格紀錄：</strong>${failRecs.length>0?failRecs.length+'筆':'無'}</div>`;
+  const subtypes=['biopsy','ph2d','ph3d','vendor'];const subLabel={biopsy:'Biopsy',ph2d:'2D假體',ph3d:'3D假體',vendor:'原廠校正'};
+  summaryHtml+=`<div style="overflow-x:auto"><table class="preview-tbl"><thead><tr><th>日期</th>${subtypes.map(s=>`<th>${subLabel[s]}</th>`).join('')}</tr></thead><tbody>`;
+  wDates.forEach(d=>{
+    summaryHtml+=`<tr><td>${d}</td>`;
+    subtypes.forEach(s=>{
+      const r=recs.find(x=>x.date===d&&x.subtype===s);
+      summaryHtml+=r?`<td><span class="badge ${r.overall==='pass'?'bp':'bf'}" style="font-size:11px">${r.overall==='pass'?'P':'F'}</span></td>`:'<td style="color:var(--gray)">—</td>';
+    });
+    summaryHtml+='</tr>';
+  });
+  summaryHtml+='</tbody></table></div>';
+  document.getElementById('mr-summary').innerHTML=summaryHtml;
+  document.getElementById('op-none').checked=true;
+  document.getElementById('op-text-wrap').style.display='none';
+  document.getElementById('mr-opinion-text').value='';
+  document.getElementById('op-preview').textContent='本月無異常追蹤事項';
+  document.getElementById('mr-confirm-chk').checked=false;
+  document.getElementById('mr-confirm-stamp').classList.remove('show');
+  document.getElementById('mr-confirm-box').classList.remove('confirmed');
+  openModal('month-review-modal');
+}
+function onOpinionChange(){
+  const has=document.getElementById('op-has').checked;
+  document.getElementById('op-text-wrap').style.display=has?'block':'none';
+  document.getElementById('op-preview').textContent=has?(document.getElementById('mr-opinion-text').value||'（請填寫覆核意見）'):'本月無異常追蹤事項';
+}
+function updateOpPreview(){
+  const txt=document.getElementById('mr-opinion-text').value;
+  document.getElementById('op-preview').textContent=txt||'（請填寫覆核意見）';
+}
+function onReviewConfirm(){
+  const chk=document.getElementById('mr-confirm-chk'),stamp=document.getElementById('mr-confirm-stamp'),box=document.getElementById('mr-confirm-box');
+  if(chk.checked){stamp.textContent=`${currentUser.name} 確認覆核於 ${nowStamp()}`;stamp.classList.add('show');box.classList.add('confirmed');}
+  else{stamp.classList.remove('show');box.classList.remove('confirmed');}
+}
+function submitMgReview(){
+  if(!document.getElementById('mr-confirm-chk').checked){showToast('請先勾選確認完成覆核','terr');return;}
+  const hasOp=document.getElementById('op-has').checked;
+  const opinion=hasOp?document.getElementById('mr-opinion-text').value.trim():'本月無異常追蹤事項';
+  if(hasOp&&!opinion){showToast('請填寫覆核意見','terr');return;}
+  const rec={type:'mg-month-review',month:currentMrMonth,reviewer:currentUser.name,reviewTime:nowStamp(),opinion};
+  const di=mgRecords.findIndex(r=>r.type==='mg-month-review'&&r.month===currentMrMonth);
+  if(di>=0) mgRecords[di]=rec;else mgRecords.push(rec);
+  saveState();updateMgReviewBadge();closeModal('month-review-modal');renderMgMonthReviewList();
+  showToast(`✓ ${currentMrMonth} 月份覆核已完成`);
+}
+
+// ══ ITEM REVIEW ══
+function openItemReview(idx){
+  const rec=filteredMgRecords[idx];if(!rec)return;
+  currentItemReviewIdx=idx;
+  const subLabel={compress:'壓迫厚度顯示準確性',visual:'目視檢查',acq:'擷像工作站品管',rad:'閱片工作站品管',mvendor:'原廠特定校正（每月）',biopsy:'Biopsy定位',ph2d:'假體影像品質 2D',ph3d:'假體影像品質 3D',vendor:'原廠特定校正（每週）'};
+  document.getElementById('item-review-title').textContent=`項目覆核 — ${subLabel[rec.subtype]||rec.type}`;
+  let html=`<div><strong>日期：</strong>${rec.date}　<strong>品保人員：</strong>${rec.staff}</div>`;
+  html+=`<div style="margin-top:6px"><strong>整體判定：</strong><span class="badge ${rec.overall==='pass'?'bp':'bf'}">${rec.overall==='pass'?'合格(P)':'不合格(F)'}</span></div>`;
+  if(rec.fails&&rec.fails.length>0) html+=`<div class="rec-fail-list" style="margin-top:6px">⚠ ${rec.fails.join('　')}</div>`;
+  document.getElementById('item-review-summary').innerHTML=html;
+  document.getElementById('ir-none').checked=true;
+  document.getElementById('ir-text-wrap').style.display='none';
+  document.getElementById('ir-opinion-text').value='';
+  document.getElementById('ir-confirm-chk').checked=false;
+  document.getElementById('ir-confirm-stamp').classList.remove('show');
+  document.getElementById('ir-confirm-box').classList.remove('confirmed');
+  openModal('item-review-modal');
+}
+function onItemOpinionChange(){
+  const has=document.getElementById('ir-has').checked;
+  document.getElementById('ir-text-wrap').style.display=has?'block':'none';
+}
+function onItemReviewConfirm(){
+  const chk=document.getElementById('ir-confirm-chk'),stamp=document.getElementById('ir-confirm-stamp'),box=document.getElementById('ir-confirm-box');
+  if(chk.checked){stamp.textContent=`${currentUser.name} 確認覆核於 ${nowStamp()}`;stamp.classList.add('show');box.classList.add('confirmed');}
+  else{stamp.classList.remove('show');box.classList.remove('confirmed');}
+}
+function submitItemReview(){
+  if(!document.getElementById('ir-confirm-chk').checked){showToast('請先勾選確認','terr');return;}
+  const hasOp=document.getElementById('ir-has').checked;
+  const opinion=hasOp?document.getElementById('ir-opinion-text').value.trim():'無異常';
+  const rec=filteredMgRecords[currentItemReviewIdx];if(!rec)return;
+  const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
+  mgRecords[realIdx].itemReviewer=currentUser.name;
+  mgRecords[realIdx].itemReviewTime=nowStamp();
+  mgRecords[realIdx].itemOpinion=opinion;
+  saveState();closeModal('item-review-modal');
+  filteredMgRecords=[...mgRecords];filterMgHistory();
+  showToast('✓ 項目覆核已完成');
+}
+// ══ HISTORY ══
+function filterMgHistory(){
+  const type=document.getElementById('mg-h-type').value;
+  const month=document.getElementById('mg-h-month').value;
+  let recs=mgRecords.filter(r=>r.type!=='mg-month-review');
+  if(type) recs=recs.filter(r=>r.type===type);
+  if(month) recs=recs.filter(r=>r.date&&r.date.startsWith(month));
+  filteredMgRecords=recs.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  renderMgHistory(filteredMgRecords);
+}
+function renderMgHistory(recs){
+  const tb=document.getElementById('mg-hist-body');if(!tb)return;
+  const typeLabel={'mg-weekly':'每週','mg-monthly-item':'每月','mg-semiannual':'每半年'};
+  const subLabel={compress:'壓迫厚度',visual:'目視檢查',acq:'擷像工作站',rad:'閱片工作站',mvendor:'原廠校正(月)',biopsy:'Biopsy',ph2d:'假體2D',ph3d:'假體3D',vendor:'原廠校正(週)'};
+  const isReviewer=currentUser&&(currentUser.role==='admin'||currentUser.canReview);
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  tb.innerHTML=recs.length===0?`<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:24px">無符合條件的紀錄</td></tr>`:recs.map((r,i)=>{
+    const monthReview=(r.type==='mg-weekly')?mgRecords.find(x=>x.type==='mg-month-review'&&x.month===r.date?.slice(0,7)):null;
+    let reviewStatus='';
+    if(r.type==='mg-weekly'){
+      if(monthReview) reviewStatus=`<span class="badge bp">月覆核完成</span><br><small style="color:var(--gray)">${monthReview.reviewer}</small>`;
+      else if(r.itemReviewer) reviewStatus=`<span class="badge bpu">項目覆核完成</span><br><small>${r.itemReviewer}</small>`;
+      else reviewStatus='<span class="badge bn">待覆核</span>';
+    } else if(r.type==='mg-monthly-item'||r.type==='mg-semiannual'){
+      if(r.itemReviewer) reviewStatus=`<span class="badge bpu">覆核完成</span><br><small>${r.itemReviewer}</small>`;
+      else reviewStatus='<span class="badge bn">待覆核</span>';
+    }
+    let reviewBtn='';
+    if(isReviewer&&r.type!=='mg-weekly'&&!r.itemReviewer) reviewBtn=`<button class="btn btn-pu btn-sm" onclick="openItemReview(${i})">覆核</button>`;
+    else if(isReviewer&&r.type!=='mg-weekly'&&r.itemReviewer) reviewBtn=`<button class="btn btn-sm" onclick="showItemOpinion(${i})">查看意見</button>`;
+    else if(r.type==='mg-weekly'&&monthReview) reviewBtn=`<button class="btn btn-sm" onclick="showMonthReviewOpinion('${r.date?.slice(0,7)}')">查看月覆核</button>`;
+    else if(r.type==='mg-weekly'&&isReviewer&&r.itemReviewer) reviewBtn=`<button class="btn btn-sm" onclick="showItemOpinion(${i})">查看意見</button>`;
+    else if(r.type==='mg-weekly'&&isReviewer&&!r.itemReviewer) reviewBtn=`<button class="btn btn-pu btn-sm" onclick="openItemReview(${i})">項目覆核</button>`;
+    const deleteBtn=isAdmin?`<button class="btn btn-r btn-sm" style="padding:3px 8px;font-size:11px" onclick="deleteMgRecord(${i})">刪除</button>`:'';
+    return `<tr><td>${r.date||'—'}</td><td>${typeLabel[r.type]||r.type}</td><td>${subLabel[r.subtype]||'—'}</td><td>${r.staff||'—'}</td><td><span class="badge ${r.overall==='pass'?'bp':r.overall==='fail'?'bf':'bn'}">${r.overall==='pass'?'合格':'不合格'}</span></td><td>${reviewStatus}</td><td style="white-space:nowrap;display:flex;gap:4px;align-items:center"><button class="btn btn-sm" onclick="viewMgRecord(${i})">詳情</button>${reviewBtn}${deleteBtn}</td></tr>`;
+  }).join('');
+}
+function deleteMgRecord(i){
+  if(!confirm('確定要刪除此筆紀錄嗎？此動作無法復原。'))return;
+  const rec=filteredMgRecords[i];if(!rec)return;
+  const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
+  mgRecords.splice(realIdx,1);saveState();
+  filteredMgRecords=filteredMgRecords.filter((_,ii)=>ii!==i);
+  renderMgHistory(filteredMgRecords);updateMgReviewBadge();renderMgDash();
+  showToast('紀錄已刪除');
+}
+function showMonthReviewOpinion(mo){
+  const rev=mgRecords.find(r=>r.type==='mg-month-review'&&r.month===mo);
+  if(!rev)return;
+  document.getElementById('rec-detail-title').textContent=`月彙整覆核意見 — ${mo}`;
+  document.getElementById('rec-detail-body').innerHTML=`<div class="review-opinion-box"><strong>覆核人：</strong>${rev.reviewer}　<strong>覆核時間：</strong>${rev.reviewTime}<br><strong>意見：</strong>${rev.opinion}</div>`;
+  openModal('rec-detail-modal');
+}
+function showItemOpinion(i){
+  const rec=filteredMgRecords[i];if(!rec)return;
+  document.getElementById('rec-detail-title').textContent='項目覆核意見';
+  document.getElementById('rec-detail-body').innerHTML=`<div class="review-opinion-box"><strong>覆核人：</strong>${rec.itemReviewer}　<strong>覆核時間：</strong>${rec.itemReviewTime||'—'}<br><strong>意見：</strong>${rec.itemOpinion||'—'}</div>`;
+  openModal('rec-detail-modal');
+}
+function viewMgRecord(i){
+  const r=filteredMgRecords[i];if(!r)return;
+  const subLabel={compress:'壓迫厚度顯示準確性',visual:'目視檢查',acq:'擷像工作站品管',rad:'閱片工作站品管',mvendor:'原廠特定校正（每月）',biopsy:'Biopsy定位',ph2d:'假體影像品質 2D',ph3d:'假體影像品質 3D',vendor:'原廠特定校正（每週）'};
+  let html=`<div class="rec-detail-grid"><span><strong>日期：</strong>${r.date}</span><span><strong>人員：</strong>${r.staff}</span><span><strong>類型：</strong>${subLabel[r.subtype]||r.type}</span><span><strong>儲存時間：</strong>${r.savedAt}</span></div>`;
+  html+=`<div><span class="badge ${r.overall==='pass'?'bp':'bf'}" style="font-size:13px">${r.overall==='pass'?'合格 (P)':'不合格 (F)'}</span></div>`;
+  if(r.fails&&r.fails.length>0) html+=`<div class="rec-fail-list" style="margin-top:8px">⚠ 不合格項目：${r.fails.join('；')}</div>`;
+  if(r.subtype==='ph2d'||r.subtype==='ph3d') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>纖維：${r.fiber}</span><span>鈣化點群：${r.calc}</span><span>腫塊物：${r.mass}</span><span>假影：${r.artifact}</span>${r.kvp!=null?`<span>kVp：${r.kvp}</span>`:''}${r.mas!=null?`<span>mAs：${r.mas}</span>`:''}${r.dose!=null?`<span>AGD(mGy)：${r.dose}</span>`:''}</div>`;
+  if(r.subtype==='compress') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>顯示厚度：${r.dispThick} cm</span><span>偏差：${r.diff>=0?'+':''}${r.diff?.toFixed(2)} cm</span></div>`;
+  if(r.subtype==='vendor') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>flat field 2D：${r.ff2d}</span><span>flat field Biopsy：${r.ffBiopsy}</span><span>flat field 3D：${r.ff3d}</span><span>IQST：${r.iqst}</span><span>ACR纖維：${r.acrFiber}</span><span>ACR鈣化：${r.acrCalc}</span><span>ACR腫塊：${r.acrMass}</span></div>`;
+  if(r.subtype==='biopsy') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>定位準確度：${r.loc}</span><span>切片針支撐架：${r.needle}</span></div>`;
+  if(r.subtype==='mvendor') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>AOP 2D：${r.aop2d}</span><span>AOP 3D：${r.aop3d}</span></div>`;
+  if(r.subtype==='rad'&&r.itemsL) html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>左螢幕整體：<span class="badge ${r.overallL==='pass'?'bp':'bf'}">${r.overallL==='pass'?'合格':'不合格'}</span></span><span>右螢幕整體：<span class="badge ${r.overallR==='pass'?'bp':'bf'}">${r.overallR==='pass'?'合格':'不合格'}</span></span></div>`;
+  if(r.type==='mg-semiannual') html+=`<div class="rec-detail-grid" style="margin-top:10px"><span>手動微調壓迫力：${r.manual2d} daN</span><span>電動驅動初始壓迫力：${r.motorN} daN</span><span>取像過程壓迫力：${r.p3}</span></div>`;
+  if(r.note) html+=`<div style="margin-top:8px;font-size:13px"><strong>備註：</strong>${r.note}</div>`;
+  if(r.itemReviewer) html+=`<div class="review-opinion-box" style="margin-top:10px"><strong>項目覆核：</strong>${r.itemReviewer}　${r.itemReviewTime||''}<br>${r.itemOpinion||''}</div>`;
+  document.getElementById('rec-detail-title').textContent=`紀錄詳情 — ${r.date} ${subLabel[r.subtype]||''}`;
+  document.getElementById('rec-detail-body').innerHTML=html;
+  openModal('rec-detail-modal');
+}
+function exportMgExcel(){
+  const data=filteredMgRecords.map(r=>({日期:r.date,類型:r.type,子項目:r.subtype||'',品保人員:r.staff,整體判定:r.overall==='pass'?'合格':'不合格',不合格項目:(r.fails||[]).join('；'),備註:r.note||'',覆核人:r.itemReviewer||'',覆核時間:r.itemReviewTime||'',覆核意見:r.itemOpinion||''}));
+  const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'品保紀錄');XLSX.writeFile(wb,`mg_qa_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+// ══ TREND ══
+function applyTrendQuick(){
+  const q=document.getElementById('mg-t-quick').value;if(!q)return;
+  const today=new Date(),end=today.toISOString().split('T')[0];let start;
+  if(q==='1m'){start=end.slice(0,7)+'-01';}
+  else if(q==='3m'){const d=new Date(today);d.setMonth(d.getMonth()-3);start=d.toISOString().split('T')[0];}
+  else if(q==='6m'){const d=new Date(today);d.setMonth(d.getMonth()-6);start=d.toISOString().split('T')[0];}
+  else if(q==='1y'){const d=new Date(today);d.setFullYear(d.getFullYear()-1);start=d.toISOString().split('T')[0];}
+  document.getElementById('mg-t-start').value=start;document.getElementById('mg-t-end').value=end;
+  renderMgTrend();
+}
+function switchMgMode(mode,btn){
+  mgTMode=mode;
+  document.querySelectorAll('.ttab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
+  renderMgTrend();
+}
+function renderMgTrend(){
+  const start=document.getElementById('mg-t-start').value,end=document.getElementById('mg-t-end').value;
+  const sub=mgTMode==='2d'?'ph2d':'ph3d';
+  let recs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype===sub);
+  if(start) recs=recs.filter(r=>r.date>=start);
+  if(end) recs=recs.filter(r=>r.date<=end);
+  recs.sort((a,b)=>a.date.localeCompare(b.date));
+  const labels=recs.map(r=>r.date),fiber=recs.map(r=>r.fiber||null),calc=recs.map(r=>r.calc||null),mass=recs.map(r=>r.mass||null);
+  const avg=arr=>{const v=arr.filter(x=>x!=null);return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):0;};
+  document.getElementById('mg-t-fiber').textContent=avg(fiber)||'—';
+  document.getElementById('mg-t-calc').textContent=avg(calc)||'—';
+  document.getElementById('mg-t-mass').textContent=avg(mass)||'—';
+  document.getElementById('mg-t-fail').textContent=recs.filter(r=>r.overall==='fail').length;
+  const defLine={tension:0.3,spanGaps:true,pointRadius:4,borderWidth:2};
+  const thresholds={fiber:{min:2,max:6,color:'#a0295a'},calc:{min:3,max:5,color:'#1a6fc4'},mass:{min:2,max:4,color:'#0e8a7a'}};
+  const buildChart=(canvasId,instRef,data,label,color,minThresh,maxThresh,setter)=>{
+    const ctx=document.getElementById(canvasId);if(!ctx)return;
+    if(instRef)instRef.destroy();
+    const inst=new Chart(ctx,{type:'line',data:{labels,datasets:[{label,data,borderColor:color,backgroundColor:color+'22',...defLine},{label:'最低標準',data:Array(labels.length).fill(minThresh),borderColor:'#e74c3c',borderDash:[4,4],pointRadius:0,borderWidth:1.5,tension:0,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:maxThresh+1,ticks:{stepSize:0.5}}}}});
+    setter(inst);
+  };
+  buildChart('mgFiberChart',mgFChart,fiber,'纖維',thresholds.fiber.color,thresholds.fiber.min,thresholds.fiber.max,v=>mgFChart=v);
+  buildChart('mgCalcChart',mgCChart,calc,'鈣化點群',thresholds.calc.color,thresholds.calc.min,thresholds.calc.max,v=>mgCChart=v);
+  buildChart('mgMChartInst',mgMChartInst,mass,'腫塊物',thresholds.mass.color,thresholds.mass.min,thresholds.mass.max,v=>mgMChartInst=v);
+  // 月平均
+  const monthMap={};recs.forEach(r=>{const mo=r.date.slice(0,7);if(!monthMap[mo])monthMap[mo]={f:[],c:[],m:[]};if(r.fiber!=null)monthMap[mo].f.push(r.fiber);if(r.calc!=null)monthMap[mo].c.push(r.calc);if(r.mass!=null)monthMap[mo].m.push(r.mass);});
+  const mos=Object.keys(monthMap).sort();
+  const avgArr=arr=>arr.length?+(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2):null;
+  const mCtx=document.getElementById('mgMonthChart');
+  if(mCtx){if(mgMonthChart)mgMonthChart.destroy();mgMonthChart=new Chart(mCtx,{type:'bar',data:{labels:mos,datasets:[{label:'纖維',data:mos.map(m=>avgArr(monthMap[m].f)),backgroundColor:'#d4608a80',borderColor:'#a0295a',borderWidth:1.5},{label:'鈣化點群',data:mos.map(m=>avgArr(monthMap[m].c)),backgroundColor:'#4a90d980',borderColor:'#1a6fc4',borderWidth:1.5},{label:'腫塊物',data:mos.map(m=>avgArr(monthMap[m].m)),backgroundColor:'#0e8a7a80',borderColor:'#0e8a7a',borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom'}},scales:{y:{beginAtZero:false,min:0}}}});}
+  const noteEl=document.getElementById('mg-trend-note');
+  if(noteEl) noteEl.textContent=recs.length===0?'此區間無品保紀錄':`顯示 ${sub==='ph2d'?'2D':'3D'} 模式，共 ${recs.length} 筆，期間：${start}～${end}`;
+}
+// ══ PRINT HELPERS ══
+function getPrintRange(){
+  const mo=document.getElementById('mg-print-month').value,s=document.getElementById('mg-print-start').value,e=document.getElementById('mg-print-end').value;
+  if(mo) return{start:mo+'-01',end:mo+'-31',label:mo};
+  if(s&&e) return{start:s,end:e,label:s+'~'+e};
+  return null;
+}
+function getYearRange(){const yr=parseInt(document.getElementById('mg-print-year').value);if(!yr)return null;return{yr,start:`${yr}-01-01`,end:`${yr}-12-31`};}
+function getMgReviewer(mo){const rev=mgRecords.find(r=>r.type==='mg-month-review'&&r.month===mo);return rev?{name:rev.reviewer,time:rev.reviewTime,opinion:rev.opinion}:null;}
+function cfgEq(){return mgCfg.equip||DEF_MG_EQUIP;}
+function cfgSc(){return mgCfg.screen||DEF_MG_SCREEN;}
+function cfgCp(){return mgCfg.compress||DEF_MG_COMPRESS;}
+function cfgTl(){return mgCfg.tool||DEF_MG_TOOL;}
+function printDoc(html){const pa=document.getElementById('print-area');pa.innerHTML=html;pa.style.display='block';window.print();pa.style.display='none';}
+
+function baseHeader(title,subtitle,range,reviewer){
+  const eq=cfgEq();
+  let reviewerBlock='';
+  if(reviewer) reviewerBlock=`<div class="print-review"><strong>月彙整覆核：</strong>${reviewer.name}　${reviewer.time}<br><strong>覆核意見：</strong>${reviewer.opinion}</div>`;
+  return`<div class="print-wrap"><div class="print-h1">${title}</div><div class="print-h2">${subtitle}</div><div class="print-meta"><span>醫院：新北市立土城醫院　影像診療科</span><span>廠牌型號：${eq.brand} / ${eq.model}</span><span>期間：${range}</span><span>列印時間：${new Date().toLocaleString('zh-TW')}</span></div>${reviewerBlock}`;
+}
+
+// 每年報表共用標題（月份橫列）
+function yearlyHeader(title){
+  const eq=cfgEq();
+  return`<div class="print-wrap"><div class="print-h1">${title}</div><div class="print-meta"><span>廠牌型號：${eq.brand} / ${eq.model}</span><span>列印時間：${new Date().toLocaleString('zh-TW')}</span></div>`;
+}
+
+// ── 表格01 每日及每週測試總表 ──
+function printMgTable01(){
+  const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
+  const biopsyRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='biopsy'&&r.date>=range.start&&r.date<=range.end);
+  const ph2dRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='ph2d'&&r.date>=range.start&&r.date<=range.end);
+  const ph3dRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='ph3d'&&r.date>=range.start&&r.date<=range.end);
+  const vendorRecs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='vendor'&&r.date>=range.start&&r.date<=range.end);
+  const allDates=[...new Set([...biopsyRecs,...ph2dRecs,...ph3dRecs,...vendorRecs].map(r=>r.date))].sort();
+  const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
+  let html=baseHeader('數位乳房攝影品保系統','表格01　每日及每週測試總表',range.label,reviewer);
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>Biopsy定位</th><th>假體2D</th><th>假體3D</th><th>原廠校正(週)</th><th>品保人員</th></tr></thead><tbody>`;
+  allDates.forEach(d=>{
+    const b=biopsyRecs.find(r=>r.date===d),p2=ph2dRecs.find(r=>r.date===d),p3=ph3dRecs.find(r=>r.date===d),v=vendorRecs.find(r=>r.date===d);
+    const staff=[b,p2,p3,v].filter(Boolean).map(r=>r.staff)[0]||'—';
+    html+=`<tr><td>${d}</td><td>${b?b.overall==='pass'?'P':'F':'—'}</td><td>${p2?p2.overall==='pass'?'P':'F':'—'}</td><td>${p3?p3.overall==='pass'?'P':'F':'—'}</td><td>${v?v.overall==='pass'?'P':'F':'—'}</td><td>${staff}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 假體影像品質報表（附表2-01）──
+function printMgPhantom(){
+  const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
+  const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&(r.subtype==='ph2d'||r.subtype==='ph3d')&&r.date>=range.start&&r.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
+  const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
+  let html=baseHeader('數位乳房攝影品保系統','附表2-01　假體影像品質',range.label,reviewer);
+  // 依日期分組
+  const byDate={};recs.forEach(r=>{if(!byDate[r.date])byDate[r.date]={};byDate[r.date][r.subtype]=r;});
+  const dates=Object.keys(byDate).sort();
+  // 檢查同月不同日多筆：若同月有多個 dates，需分欄處理
+  html+=`<table class="ptbl"><thead><tr><th>項目</th>${dates.map(d=>`<th colspan="2">${d}</th>`).join('')}</tr><tr><th></th>${dates.map(()=>'<th>2D</th><th>3D</th>').join('')}</tr></thead><tbody>`;
+  const rows=[['kVp','kvp'],['mAs','mas'],['AGD(mGy)','dose'],['窗寬','ww'],['窗高','wl'],['纖維','fiber'],['鈣化點群','calc'],['腫塊物','mass'],['假影','artifact'],['整體判定','overall']];
+  rows.forEach(([label,key])=>{
+    html+=`<tr><td class="left">${label}</td>`;
+    dates.forEach(d=>{
+      const r2=byDate[d].ph2d,r3=byDate[d].ph3d;
+      const fmt=(r,k)=>!r?'—':k==='overall'?r[k]==='pass'?'P':'F':(r[k]??'—');
+      html+=`<td>${fmt(r2,key)}</td><td>${fmt(r3,key)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-10A ──
+function printMg2_10A(){
+  const range=getPrintRange();if(!range){showToast('請先選擇列印月份或日期範圍','twarn');return;}
+  const recs=mgRecords.filter(r=>r.type==='mg-weekly'&&r.subtype==='vendor'&&r.date>=range.start&&r.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
+  const mo=range.start.slice(0,7);const reviewer=getMgReviewer(mo);
+  let html=baseHeader('數位乳房攝影品保系統','附表2-10A　原廠特定校正及測試（每週）',range.label,reviewer);
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>flat field 2D</th><th>flat field Biopsy</th><th>flat field 3D</th><th>IQST</th><th>ACR纖維</th><th>ACR鈣化</th><th>ACR腫塊</th><th>整體</th><th>品保人員</th></tr></thead><tbody>`;
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.ff2d||'—'}</td><td>${r.ffBiopsy||'—'}</td><td>${r.ff3d||'—'}</td><td>${r.iqst||'—'}</td><td>${r.acrFiber??'—'}</td><td>${r.acrCalc??'—'}</td><td>${r.acrMass??'—'}</td><td>${r.overall==='pass'?'P':'F'}</td><td>${r.staff}</td></tr>`;});
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 表格02 每月及每半年測試總表（每年）──
+function printMgTable02(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const months=Array.from({length:12},(_,i)=>`${yr}-${String(i+1).padStart(2,'0')}`);
+  let html=yearlyHeader(`表格02　每月及每半年測試總表（${yr}年）`);
+  const subtypes=['compress','visual','acq','rad','mvendor'];
+  const subLabel={compress:'壓迫厚度',visual:'目視檢查',acq:'擷像工作站',rad:'閱片工作站',mvendor:'原廠校正(月)'};
+  html+=`<table class="ptbl"><thead><tr><th>項目</th>${months.map(m=>`<th>${m.slice(5)}月</th>`).join('')}</tr></thead><tbody>`;
+  subtypes.forEach(sub=>{
+    html+=`<tr><td class="left">${subLabel[sub]}</td>`;
+    months.forEach(mo=>{const r=mgRecords.find(x=>x.type==='mg-monthly-item'&&x.subtype===sub&&x.date?.startsWith(mo));html+=`<td>${r?r.overall==='pass'?'P':'F':'—'}</td>`;});
+    html+='</tr>';
+  });
+  // 每半年
+  html+=`<tr><td class="left">壓迫力測試</td>`;
+  months.forEach(mo=>{const r=mgRecords.find(x=>x.type==='mg-semiannual'&&x.date?.startsWith(mo));const moN=parseInt(mo.slice(5));html+=`<td>${(moN===6||moN===12)?r?r.overall==='pass'?'P':'F':'未執行':'N/A'}</td>`;});
+  html+=`</tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-03 壓迫厚度 ──
+function printMg2_03(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const cp=cfgCp();
+  let html=yearlyHeader(`附表2-03　壓迫厚度顯示準確性（${yr}年）`);
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>壓迫板種類</th><th>物件實際厚度(cm)</th><th>顯示厚度(cm)</th><th>偏差(cm)</th><th>判定</th></tr></thead><tbody>`;
+  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='compress'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${cp.paddle}</td><td>${cp.actualThick}</td><td>${r.dispThick}</td><td>${r.diff>=0?'+':''}${r.diff?.toFixed(2)}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
+  if(recs.length===0) html+=`<tr><td colspan="7" style="text-align:center">本年度無紀錄</td></tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-04 目視檢查 ──
+function printMg2_04(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;
+  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='visual'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+  let html=yearlyHeader(`附表2-04　目視檢查（${yr}年）`);
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>不合格項目</th><th>整體判定</th></tr></thead><tbody>`;
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td class="left">${r.fails&&r.fails.length>0?r.fails.join('；'):'全部合格'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
+  if(recs.length===0) html+=`<tr><td colspan="4" style="text-align:center">本年度無紀錄</td></tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-05 擷像工作站 ──
+function printMg2_05(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const sc=cfgSc();
+  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='acq'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+  let html=yearlyHeader(`附表2-05　擷像工作站品管（${yr}年）`);
+  html+=`<div style="font-size:9px;margin-bottom:4px">廠牌：${sc.acqBrand}　型號：${sc.acqModel}　序號：${sc.acqSn}</div>`;
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>不合格項目</th><th>整體判定</th></tr></thead><tbody>`;
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td class="left">${r.fails&&r.fails.length>0?r.fails.join('；'):'全部合格'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
+  if(recs.length===0) html+=`<tr><td colspan="4" style="text-align:center">本年度無紀錄</td></tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-06 閱片工作站 ──
+function printMg2_06(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const sc=cfgSc();
+  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='rad'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+  let html=yearlyHeader(`附表2-06　閱片工作站品管（${yr}年）`);
+  html+=`<div style="font-size:9px;margin-bottom:4px">廠牌：${sc.radBrand}　型號：${sc.radModel}　左序號：${sc.radSnL}　右序號：${sc.radSnR}</div>`;
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>左螢幕</th><th>右螢幕</th><th>整體判定</th></tr></thead><tbody>`;
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.overallL==='pass'?'P':'F'}</td><td>${r.overallR==='pass'?'P':'F'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
+  if(recs.length===0) html+=`<tr><td colspan="5" style="text-align:center">本年度無紀錄</td></tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-10B 原廠特定校正每月 ──
+function printMg2_10B(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;
+  const recs=mgRecords.filter(r=>r.type==='mg-monthly-item'&&r.subtype==='mvendor'&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+  let html=yearlyHeader(`附表2-10B　原廠特定校正及測試（每月）（${yr}年）`);
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>AOP 2D</th><th>AOP 3D</th><th>整體判定</th></tr></thead><tbody>`;
+  recs.forEach(r=>{html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.aop2d||'—'}</td><td>${r.aop3d||'—'}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;});
+  if(recs.length===0) html+=`<tr><td colspan="5" style="text-align:center">本年度無紀錄</td></tr>`;
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+
+// ── 附表2-09 壓迫力測試（僅6月/12月）──
+function printMg2_09(){
+  const yRange=getYearRange();if(!yRange){showToast('請選擇年份','twarn');return;}
+  const{yr,start,end}=yRange;const tl=cfgTl();
+  // 僅取6月及12月紀錄
+  const recs=mgRecords.filter(r=>r.type==='mg-semiannual'&&r.date>=start&&r.date<=end).filter(r=>{const mo=parseInt(r.date?.slice(5,7));return mo===6||mo===12;}).sort((a,b)=>a.date.localeCompare(b.date));
+  let html=yearlyHeader(`附表2-09　壓迫力測試（${yr}年）`);
+  html+=`<div style="font-size:9px;margin-bottom:4px">量測工具：${tl.tool}　顯示單位：${tl.unit}</div>`;
+  html+=`<table class="ptbl"><thead><tr><th>日期</th><th>品保人員</th><th>手動微調壓迫力</th><th>電動驅動初始壓迫力</th><th>取像過程壓迫力</th><th>整體判定</th></tr></thead><tbody>`;
+  // 固定顯示6月、12月兩列，即使無紀錄也列出
+  const targets=[`${yr}-06`,`${yr}-12`];
+  targets.forEach(mo=>{
+    const r=recs.find(x=>x.date?.startsWith(mo));
+    if(r) html+=`<tr><td>${r.date}</td><td>${r.staff}</td><td>${r.manual2d} daN</td><td>${r.motorN} daN</td><td>${r.p3}</td><td>${r.overall==='pass'?'P':'F'}</td></tr>`;
+    else html+=`<tr><td>${mo}</td><td colspan="5" style="text-align:center;color:#aaa">尚未執行</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;printDoc(html);
+}
+// ══ SETTINGS POPULATE ══
+function populateMgEquipSettings(){const eq=mgCfg.equip||DEF_MG_EQUIP;['brand','model','room','phantom','phantomSn'].forEach(k=>{const el=document.getElementById('mg-cfg-'+k.replace(/([A-Z])/g,'-$1').toLowerCase());if(el)el.value=eq[k]||'';});}
+function populateMgScreenSettings(){const sc=mgCfg.screen||DEF_MG_SCREEN;const m={acqBrand:'mg-cfg-acq-brand',acqModel:'mg-cfg-acq-model',acqSn:'mg-cfg-acq-sn',radBrand:'mg-cfg-rad-brand',radModel:'mg-cfg-rad-model',radSnL:'mg-cfg-rad-sn-l',radSnR:'mg-cfg-rad-sn-r'};Object.entries(m).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=sc[k]||'';});}
+function populateMgPhantomSettings(){const ph=mgCfg.phantom||DEF_MG_PHANTOM;['paddleSize2d','paddleType2d','hint2d','paddleSize3d','paddleType3d','hint3d'].forEach(k=>{const m={paddleSize2d:'mg-cfg-paddle-size-2d',paddleType2d:'mg-cfg-paddle-type-2d',hint2d:'mg-cfg-hint-2d',paddleSize3d:'mg-cfg-paddle-size-3d',paddleType3d:'mg-cfg-paddle-type-3d',hint3d:'mg-cfg-hint-3d'};const el=document.getElementById(m[k]);if(el)el.value=ph[k]||'';});}
+function populateMgCompressSettings(){const c=mgCfg.compress||DEF_MG_COMPRESS;const el1=document.getElementById('mg-cfg-compress-paddle'),el2=document.getElementById('mg-cfg-actual-thick'),el3=document.getElementById('mg-cfg-compress-force-kg');if(el1)el1.value=c.paddle||'';if(el2)el2.value=c.actualThick||4.5;if(el3)el3.value=c.forceKg||'';}
+function populateMgToolSettings(){const t=mgCfg.tool||DEF_MG_TOOL;const el1=document.getElementById('mg-cfg-tool'),el2=document.getElementById('mg-cfg-unit');if(el1)el1.value=t.tool||'';if(el2)el2.value=t.unit||'';}
+function populateMgHintsSettings(){const h=mgCfg.hints||DEF_MG_HINTS;['h1','h2','h3'].forEach((k,i)=>{const el=document.getElementById(`hint${i+1}-input`);if(el)el.value=h[k]||'';});const re=document.getElementById('hint-rad-input');if(re)re.value=h.rad||'';const ri=document.getElementById('hint-rad-img-input');if(ri)ri.value=h.radImg||'';}
+
+function saveMgEquipCfg(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.equip={brand:g('mg-cfg-brand'),model:g('mg-cfg-model'),room:g('mg-cfg-room'),phantom:g('mg-cfg-phantom'),phantomSn:g('mg-cfg-phantom-sn')};
+  saveState();initMgEquipDisplay();showToast('設備設定已儲存');
+}
+function saveMgScreenCfg(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.screen={acqBrand:g('mg-cfg-acq-brand'),acqModel:g('mg-cfg-acq-model'),acqSn:g('mg-cfg-acq-sn'),radBrand:g('mg-cfg-rad-brand'),radModel:g('mg-cfg-rad-model'),radSnL:g('mg-cfg-rad-sn-l'),radSnR:g('mg-cfg-rad-sn-r')};
+  saveState();initMgEquipDisplay();showToast('螢幕設定已儲存');
+}
+function saveMgPhantomCfg(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.phantom={paddleSize2d:g('mg-cfg-paddle-size-2d'),paddleType2d:g('mg-cfg-paddle-type-2d'),hint2d:g('mg-cfg-hint-2d'),paddleSize3d:g('mg-cfg-paddle-size-3d'),paddleType3d:g('mg-cfg-paddle-type-3d'),hint3d:g('mg-cfg-hint-3d')};
+  saveState();applyPhantomCfg();showToast('假體影像設定已儲存');
+}
+function saveMgCompressCfg(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.compress={paddle:g('mg-cfg-compress-paddle'),actualThick:parseFloat(g('mg-cfg-actual-thick'))||4.5,forceKg:parseFloat(g('mg-cfg-compress-force-kg'))||0};
+  saveState();applyCompressCfg();showToast('壓迫厚度設定已儲存');
+}
+function saveMgCompressToolCfg(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.tool={tool:g('mg-cfg-tool'),unit:g('mg-cfg-unit')};
+  saveState();applyToolCfg();showToast('壓迫力工具設定已儲存');
+}
+function saveMgHints(){
+  const g=id=>document.getElementById(id)?.value||'';
+  mgCfg.hints={h1:g('hint1-input'),h2:g('hint2-input'),h3:g('hint3-input'),rad:g('hint-rad-input'),radImg:g('hint-rad-img-input')};
+  saveState();applyMgHints();showToast('執行重點已儲存');
+}
+
+// ══ NOTIFY ══
+function populateMgNotify(){
+  const tb=document.getElementById('mg-notify-body');if(!tb)return;
+  tb.innerHTML=sharedCfg.users.map(u=>{
+    const p=mgCfg.notifyPrefs[u.id]||{};
+    return`<tr><td>${u.name}（${u.id}）</td><td><input type="email" id="nf-email-${u.id}" value="${u.email||''}" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px"></td><td><input type="checkbox" id="nf-wd-${u.id}" ${p.weeklyDone?'checked':''}></td><td><input type="checkbox" id="nf-md-${u.id}" ${p.monthlyDone?'checked':''}></td><td><input type="checkbox" id="nf-fail-${u.id}" ${p.fail?'checked':''}></td><td><input type="checkbox" id="nf-rd-${u.id}" ${p.reviewDone?'checked':''}></td></tr>`;
+  }).join('');
+}
+function saveMgNotify(){
+  sharedCfg.users.forEach(u=>{
+    const emailEl=document.getElementById(`nf-email-${u.id}`);if(emailEl)u.email=emailEl.value.trim();
+    mgCfg.notifyPrefs[u.id]={weeklyDone:document.getElementById(`nf-wd-${u.id}`)?.checked||false,monthlyDone:document.getElementById(`nf-md-${u.id}`)?.checked||false,fail:document.getElementById(`nf-fail-${u.id}`)?.checked||false,reviewDone:document.getElementById(`nf-rd-${u.id}`)?.checked||false};
+  });
+  saveState();showToast('通知設定已儲存');
+  // 自動同步至 Google Sheets
+  syncNotifyToSheets(false);
+}
+
+// ══ USER MANAGEMENT ══
+function populateUserTable(tbodyId){
+  const tb=document.getElementById(tbodyId);if(!tb)return;
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  tb.innerHTML=sharedCfg.users.map((u,i)=>`<tr><td>${u.name}</td><td>${u.id}</td><td><span class="${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'管理者':'一般使用者'}</span></td><td>${u.canReview?'<span class="badge bp">是</span>':'<span class="badge bn">否</span>'}</td><td>${isAdmin?`<button class="btn btn-sm" onclick="openUserModal(${i})">編輯</button> <button class="btn btn-r btn-sm" onclick="delUser(${i})">刪除</button>`:''}</td></tr>`).join('');
+}
+function openUserModal(idx){
+  const um=document.getElementById('user-modal');
+  document.getElementById('um-idx').value=idx??'';
+  if(idx!==undefined&&idx!==null&&idx!==''){
+    const u=sharedCfg.users[idx];if(!u)return;
+    document.getElementById('um-name').value=u.name;document.getElementById('um-id').value=u.id;
+    document.getElementById('um-pw').value=u.pw;document.getElementById('um-role').value=u.role;
+    document.getElementById('um-can-review').checked=!!u.canReview;
+  } else {['um-name','um-id','um-pw'].forEach(id=>document.getElementById(id).value='');document.getElementById('um-role').value='user';document.getElementById('um-can-review').checked=false;}
+  openModal('user-modal');
+}
+function saveUser(){
+  const name=document.getElementById('um-name').value.trim();
+  const id=document.getElementById('um-id').value.trim();
+  const pw=document.getElementById('um-pw').value.trim();
+  const role=document.getElementById('um-role').value;
+  const canReview=role==='admin'||document.getElementById('um-can-review').checked;
+  if(!name||!id||!pw){showToast('請填寫所有欄位','terr');return;}
+  const idx=document.getElementById('um-idx').value;
+  if(idx!==''){
+    const u=sharedCfg.users[parseInt(idx)];if(!u)return;
+    u.name=name;u.id=id;u.pw=pw;u.role=role;u.canReview=canReview;
+  } else {
+    if(sharedCfg.users.find(u=>u.id===id)){showToast('此帳號已存在','terr');return;}
+    sharedCfg.users.push({name,id,pw,role,canReview,email:''});
+  }
+  saveState();closeModal('user-modal');populateUserTable('mg-user-tbody');showToast('使用者已儲存');
+  // 自動同步至 Google Sheets
+  syncUsersToSheets(false);
+}
+function delUser(idx){
+  if(!confirm(`確定要刪除使用者「${sharedCfg.users[idx]?.name}」嗎？`))return;
+  sharedCfg.users.splice(idx,1);saveState();populateUserTable('mg-user-tbody');
+  showToast('使用者已刪除');syncUsersToSheets(false);
+}
+function importCSV(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;const lines=text.split('\n').filter(l=>l.trim());
+    const added=[];
+    lines.slice(1).forEach(line=>{
+      const cols=line.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      const[name,id,pw,role,canReview]=[cols[0],cols[1],cols[2],cols[3]||'user',cols[4]==='true'||cols[4]==='是'||cols[4]==='1'];
+      if(!name||!id||!pw)return;if(sharedCfg.users.find(u=>u.id===id))return;
+      sharedCfg.users.push({name,id,pw,role,canReview,email:cols[5]||''});added.push(name);
+    });
+    saveState();populateUserTable('mg-user-tbody');event.target.value='';
+    showToast(`已匯入 ${added.length} 位使用者`);
+    syncUsersToSheets(false);
+  };reader.readAsText(file,'UTF-8');
+}
+function downloadCSVTemplate(){
+  const header='姓名,帳號,密碼,角色(admin/user),覆核權限(true/false),Email\n';
+  const ex='王小明,id001,19900101,user,false,example@hospital.com\n';
+  const blob=new Blob(['\uFEFF'+header+ex],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mg_users_template.csv';a.click();
+}
+</script></body></html>
