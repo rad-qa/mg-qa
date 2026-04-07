@@ -1180,12 +1180,12 @@ async function syncUsersToSheets(manual=false){
 // 同步通知設定至 Sheets
 async function syncNotifyToSheets(manual=false){
   const url=getSheetsUrl();if(!url)return;
-  const data=sharedCfg.users.map(u=>{
-    const p=mgCfg.notifyPrefs[u.id]||{};
-    return{name:u.name,id:u.id,email:u.email||'',weeklyDone:!!p.weeklyDone,monthlyDone:!!p.monthlyDone,fail:!!p.fail,reviewDone:!!p.reviewDone};
-  });
+  const data={
+    users:sharedCfg.users.map(u=>({name:u.name,id:u.id,email:u.email||''})),
+    prefs:mgCfg.notifyPrefs||{}
+  };
   const elId=manual?'manual-sync-status':'notify-sync-status';
-  await callSafe(url,{action:'syncNotify',data},elId,'通知設定已同步至 Google Sheets，共 '+data.length+' 筆');
+  await callSafe(url,{action:'syncNotify',data},elId,'通知設定已同步至 Google Sheets，共 '+sharedCfg.users.length+' 筆');
 }
 
 // 載入 Sheets 設定頁時填入已存 URL
