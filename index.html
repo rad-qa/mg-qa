@@ -1045,7 +1045,19 @@ function saveState(){
   localStorage.setItem('mg-cfg-v3',JSON.stringify(mgCfg));
   localStorage.setItem('mg-rec-v3',JSON.stringify(mgRecords));
 }
-function nowStamp(){return new Date().toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function nowStamp(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+// 列印用：把時間戳轉成兩行格式（日期+時間，24小時制）
+function fmtPrintTime(ts){
+  if(!ts||ts==='--')return'--';
+  // 已是 yyyy/MM/dd HH:mm 格式
+  const p=ts.split(' ');
+  if(p.length>=2)return`<span class="ts">${p[0]}<br>${p[1].slice(0,5)}</span>`;
+  return`<span class="ts">${ts}</span>`;
+}
 function seedMgData(){
   const ts=nowStamp();const today=new Date();const yr=today.getFullYear();const mo=today.getMonth()+1;
   const moStr=String(mo).padStart(2,'0');
@@ -1944,52 +1956,14 @@ function cfgSc(){return mgCfg.screen||DEF_MG_SCREEN;}
 function cfgCp(){return mgCfg.compress||DEF_MG_COMPRESS;}
 function cfgTl(){return mgCfg.tool||DEF_MG_TOOL;}
 function printDoc(html){
-  // 取得列印用 CSS
-  const styles=Array.from(document.styleSheets).map(ss=>{
-    try{return Array.from(ss.cssRules).map(r=>r.cssText).join('\n');}catch(e){return '';}
-  }).join('\n');
-
-  // 建立隱藏 iframe，注入完整 HTML + CSS
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;width:0;height:0;border:none;top:-9999px;left:-9999px;';
-  document.body.appendChild(iframe);
-  const doc=iframe.contentDocument||iframe.contentWindow.document;
-  doc.open();
-  doc.write(`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">
-<style>
-@page{margin:0.8cm 1.2cm}
-body{font-family:system-ui,sans-serif;font-size:9px;color:#000;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.print-wrap{width:100%}
-.print-h1{text-align:center;font-size:13px;font-weight:bold;margin-bottom:4px}
-.print-h2{text-align:center;font-size:10px;margin-bottom:6px}
-.print-tip{text-align:center;font-size:9px;color:#888;border:1px solid #ccc;padding:3px 8px;margin-bottom:8px;border-radius:3px}
-.print-meta{font-size:9px;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #ccc;display:flex;gap:16px;flex-wrap:wrap}
-.ptbl{width:100%;border-collapse:collapse;font-size:7.5px;margin-bottom:5px;page-break-inside:avoid}
-.ptbl th,.ptbl td{border:1px solid #888;padding:2px 3px;text-align:center;vertical-align:middle}
-.ptbl th{background:#e8e8e8;font-weight:bold}
-.ptbl td.left{text-align:left}
-table{page-break-inside:avoid;width:100%}
-tr{page-break-inside:avoid;page-break-after:auto}
-thead{display:table-header-group}
-.print-notes{margin-top:6px;font-size:8px;border:1px solid #aaa;padding:5px 7px;page-break-inside:avoid}
-.print-notes h4{font-weight:bold;margin-bottom:3px}
-.print-review{margin-top:6px;font-size:8px;border:1px solid #aaa;padding:5px 7px;background:#f9f9f9;page-break-inside:avoid}
-.print-opinion{margin-top:4px;font-size:8px;border:1px solid #c8a0e8;padding:5px 7px;background:#f5eefa;page-break-inside:avoid}
-.print-time{font-size:7.5px;color:#888;text-align:right;margin-top:6px}
-.ts{font-size:6.5px;line-height:1.4}
-</style>
-</head><body>${html}</body></html>`);
-  doc.close();
-
-  iframe.onload=function(){
-    try{
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    }catch(e){window.print();}
-    setTimeout(()=>{
-      try{document.body.removeChild(iframe);}catch(e){}
-    },2000);
-  };
+  const pa=document.getElementById('print-area');
+  pa.innerHTML=html;
+  pa.style.display='block';
+  window.print();
+  // 列印後還原（afterprint 不支援時用 setTimeout）
+  const restore=()=>{pa.style.display='none';pa.innerHTML='';};
+  window.addEventListener('afterprint',restore,{once:true});
+  setTimeout(restore,15000);
 }
 
 // ══ PRINT HELPERS ══
@@ -2293,7 +2267,7 @@ function printMgTable02(){
         const revs=[...subTypes,'semi'].flatMap(sub=>(byMonth[m][sub]||[]).filter(r=>r.date===d&&r.itemReviewer));
         if(revs.length){
           const rt=revs[0].itemReviewTime||'';
-          html+=`<td class="ts">${[...new Set(revs.map(r=>r.itemReviewer))].join('/')}<br>${rt.slice(0,10)}<br>${rt.slice(11,16)||''}</td>`;
+          html+=`<td class="ts">${[...new Set(revs.map(r=>r.itemReviewer))].join("/")}<br>${fmtPrintTime(rt)}</td>`;
         }
         else{html+=`<td>--</td>`;}
       });
@@ -2378,7 +2352,7 @@ function printYearlyItem(yr,subtype,titleStr,buildRows,extraInfo){
   html+=`<tr><td class="left">覆核時間</td>`;
   months.forEach(m=>{
     if(byMonth[m].length===0)html+=`<td>--</td>`;
-    else{byMonth[m].forEach(r=>html+=`<td class="ts">${(r.itemReviewTime||"--").slice(0,10)}<br>${(r.itemReviewTime||"--").slice(11,16)||""}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
+    else{byMonth[m].forEach(r=>html+=`<td>${fmtPrintTime(r.itemReviewTime)}</td>`);for(let i=byMonth[m].length;i<maxPerMonth[m];i++)html+=`<td>--</td>`;}
   });
   html+=`</tr>`;
   html+=`</tbody></table>`;
@@ -2522,7 +2496,7 @@ function printMg2_06(){
     if(byMonth[m].length===0)html+=`<td colspan="2">--</td>`;
     else byMonth[m].forEach(r=>{
       const rt=r.itemReviewTime||'--';
-      html+=`<td colspan="2" class="ts">${rt.slice(0,10)}<br>${rt.slice(11,16)||''}</td>`;
+      html+=`<td colspan="2">${fmtPrintTime(rt)}</td>`;
     });
   });
   html+=`</tr>`;
@@ -2581,7 +2555,7 @@ function printMg2_09(){
   html+=`<tr><td class="left">覆核人員</td>`;
   cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td style="font-size:7px">${r.itemReviewer||'--'}</td>`);}); html+=`</tr>`;
   html+=`<tr><td class="left">覆核時間</td>`;
-  cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td class="ts">${(r.itemReviewTime||"--").slice(0,10)}<br>${(r.itemReviewTime||"--").slice(11,16)||""}</td>`);}); html+=`</tr>`;
+  cols.forEach(c=>{if(c.recs.length===0)html+=`<td>--</td>`;else c.recs.forEach(r=>html+=`<td>${fmtPrintTime(r.itemReviewTime)}</td>`);}); html+=`</tr>`;
   html+=`</tbody></table>`;
 
   html+=notesBlock(recs.filter(r=>r.note).map(r=>`${r.date}：${r.note}`));
