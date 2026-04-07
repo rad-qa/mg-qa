@@ -220,7 +220,27 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 .rec-section-title{font-size:12px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .rec-fail-list{background:var(--red-l);border:1px solid #f0b8b3;border-radius:7px;padding:8px 12px;font-size:12.5px;color:var(--red);margin-top:4px}
 .review-opinion-box{background:var(--purple-l);border:1px solid #b8a0e8;border-radius:7px;padding:8px 12px;font-size:12.5px;color:var(--purple);margin-top:6px}
-/* Sheets sync status */
+/* ── 橫向捲動陰影提示 ── */
+.scroll-hint-wrap{position:relative}
+.scroll-hint-wrap::after{
+  content:'';
+  position:absolute;
+  top:0;right:0;bottom:0;
+  width:32px;
+  background:linear-gradient(to right,transparent,rgba(0,0,0,.10));
+  pointer-events:none;
+  border-radius:0 10px 10px 0;
+  transition:opacity .2s;
+}
+.scroll-hint-wrap.scrolled-end::after{opacity:0}
+.scroll-hint-label{
+  display:none;
+  font-size:11px;color:var(--gray);
+  text-align:right;padding:3px 6px 0;
+}
+@media(max-width:768px){
+  .scroll-hint-label{display:block}
+}
 .sync-status{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:8px;font-size:12.5px;margin-top:8px}
 .sync-ok{background:var(--green-l);color:var(--green);border:1px solid #a8dbbf}
 .sync-err{background:var(--red-l);color:var(--red);border:1px solid #f0b8b3}
@@ -581,8 +601,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
         <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px">測試圖像參考</div>
         <div id="rad-test-img-content" style="background:#f7f9fc;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px"></div>
       </div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl" style="min-width:520px;width:100%;table-layout:fixed"><thead><tr><th style="text-align:left;padding-left:10px;width:80px">類別</th><th style="text-align:left;width:220px">評估項目</th><th style="width:110px">左螢幕</th><th style="width:110px">右螢幕</th></tr></thead>
-      <tbody id="mg-rad-tbody"></tbody></table></div>
+      <table class="ctbl" style="width:100%;table-layout:fixed"><thead><tr><th style="text-align:left;padding-left:10px;width:70px">類別</th><th style="text-align:left">評估項目</th><th style="width:90px">左螢幕</th><th style="width:90px">右螢幕</th></tr></thead>
+      <tbody id="mg-rad-tbody"></tbody></table>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
         <div id="mgm-rad-l-rbar" class="rbar pend"><div><div class="rl">左螢幕</div><div class="rv" id="mgm-rad-l-txt">待判定</div></div><span id="mgm-rad-l-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
         <div id="mgm-rad-r-rbar" class="rbar pend"><div><div class="rl">右螢幕</div><div class="rv" id="mgm-rad-r-txt">待判定</div></div><span id="mgm-rad-r-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
@@ -627,15 +647,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   </div></div>
   <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>附表2-09　壓迫力測試</h3></div>
     <div class="ib ib-pink"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>判定標準：(1) 手動微調壓迫力須≥25磅（11.1 daN）；(2) 電動驅動初始壓迫最大壓迫力須介於25~45磅之間</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl" style="min-width:560px;width:100%;table-layout:fixed">
-      <thead><tr><th style="text-align:left;padding-left:10px;width:200px">測試項目</th><th style="width:110px">2D模式數值</th><th style="width:170px">2D模式判定(自動)</th><th style="width:80px">DBT外加</th></tr></thead>
+    <div class="scroll-hint-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="ctbl" style="min-width:480px;width:100%">
+      <thead><tr><th style="text-align:left;padding-left:10px;min-width:150px">測試項目</th><th style="min-width:100px">2D模式數值</th><th style="min-width:130px">2D模式判定(自動)</th><th style="min-width:60px">DBT外加</th></tr></thead>
       <tbody>
         <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">1. 手動微調壓迫力</td><td style="text-align:center"><input type="number" id="mgs-manual2d" style="width:85px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p1-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
         <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">2. 電動驅動之初始壓迫最大壓迫力</td><td style="text-align:center"><input type="number" id="mgs-motor2d" style="width:85px;padding:5px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center" step="0.1" oninput="evalSemiannual()"></td><td id="mgs-p2-auto"><span class="badge bn">待輸入</span></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
         <tr><td style="text-align:left;padding-left:10px;white-space:normal;word-break:keep-all;font-size:12.5px">3. 整個取像過程中皆可維持足夠的壓迫力</td><td></td><td><div class="pf-wrap"><input type="radio" name="mgs-p3-2d" id="mgs-p3-2dp" value="P" onchange="evalSemiannual()"><label for="mgs-p3-2dp">P</label><input type="radio" name="mgs-p3-2d" id="mgs-p3-2df" value="F" onchange="evalSemiannual()"><label for="mgs-p3-2df">F</label></div></td><td><div style="font-size:12px;color:var(--gray);text-align:center">N/A</div></td></tr>
       </tbody>
     </table></div>
-    <div id="mgs-rbar" class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
+    <div class="scroll-hint-label">← 左右滑動查看更多 →</div> class="rbar pend" style="margin-top:10px"><div><div class="rl">壓迫力測試整體</div><div class="rv" id="mgs-rbar-txt">請完成評估</div></div><span id="mgs-badge" class="badge bn" style="margin-left:auto">待判定</span></div>
   </div>
   <div class="card"><div class="card-hd"><div class="dot dot-pk"></div><h3>備註</h3></div><textarea id="mgs-note" rows="2" style="width:100%;resize:vertical"></textarea></div>
   <div class="tab-confirm-box" id="mgs-cbox">
@@ -726,12 +746,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
     <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button></div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <div class="scroll-hint-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
     <table class="htbl" style="min-width:620px">
       <thead><tr><th>日期</th><th>類型</th><th>子項目</th><th>品保人員</th><th>整體判定</th><th>覆核狀態</th><th>操作</th></tr></thead>
       <tbody id="mg-hist-body"></tbody>
     </table>
     </div>
+    <div class="scroll-hint-label">← 左右滑動查看更多 →</div>
   </div>
 </div>
 
@@ -1115,6 +1136,18 @@ function populateSheetsSettings(){
   document.getElementById('sheets-conn-status').innerHTML='';
   document.getElementById('manual-sync-status').innerHTML='';
 }
+// ══ SCROLL HINT ══
+function initScrollHints(){
+  document.querySelectorAll('.scroll-hint-wrap').forEach(el=>{
+    const check=()=>{
+      const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-4;
+      el.classList.toggle('scrolled-end',atEnd);
+    };
+    el.addEventListener('scroll',check,{passive:true});
+    check();
+  });
+}
+
 // ══ SIDEBAR TOGGLE (RWD) ══
 function toggleSidebar(){
   const sb=document.getElementById('mg-sidebar');
@@ -1175,6 +1208,7 @@ function enterMgApp(){
   initMgEquipDisplay();initMgVisualTable();initMgAcqTable();initMgRadTable();
   applyMgHints();applyPhantomCfg();applyCompressCfg();applyToolCfg();
   filteredMgRecords=[...mgRecords];renderMgDash();updateMgReviewBadge();
+  setTimeout(initScrollHints,100);
 }
 function doLogout(){
   currentUser=null;
@@ -1242,6 +1276,7 @@ function showMgPage(p,btn){
   if(p==='history'){filteredMgRecords=[...mgRecords];renderMgHistory(filteredMgRecords);renderMgMonthReviewList();}
   if(p==='dash') renderMgDash();
   if(p==='settings'){populateMgEquipSettings();populateMgScreenSettings();populateMgPhantomSettings();populateMgCompressSettings();populateMgToolSettings();populateUserTable('mg-user-tbody');populateMgNotify();populateMgHintsSettings();populateSheetsSettings();}
+  setTimeout(initScrollHints,80);
 }
 function showWTab(tab,btn){
   document.querySelectorAll('[id^="wtab-"]').forEach(x=>x.style.display='none');
@@ -1355,9 +1390,9 @@ function initMgRadTable(){
   const seen={};
   tb.innerHTML=MG_RAD_ITEMS.map(item=>{
     let cc2='';
-    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 8px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;white-space:normal;word-break:keep-all">${item.cat}</td>`;}
+    if(!seen[item.cat]){seen[item.cat]=true;cc2=`<td rowspan="${cc[item.cat]}" style="text-align:left;padding:6px 6px;font-weight:600;color:#3a4a6a;vertical-align:top;font-size:11px;background:#f8f9fc;white-space:normal;word-break:break-all">${item.cat}</td>`;}
     if(item.isScore){
-      return `<tr>${cc2}<td style="text-align:left;font-size:12px;padding:8px 10px">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
+      return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;word-break:break-all">${item.label}<br><small style="color:var(--gray)">纖維≥2 / 鈣化點群≥3 / 腫塊物≥2（自動判定）</small></td>
         <td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">
           <input type="number" id="mgm-rad-l-fiber" placeholder="纖維" min="0" max="6" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
           <input type="number" id="mgm-rad-l-calc" placeholder="鈣化" min="0" max="5" step="0.5" style="width:60px;padding:3px;font-size:12px;border:1px solid var(--border);border-radius:5px;text-align:center" oninput="evalMgRad()">
@@ -1371,7 +1406,7 @@ function initMgRadTable(){
           <div id="mgm-rad-r-score-badge"><span class="badge bn" style="font-size:10px">待輸入</span></div>
         </div></td></tr>`;
     }
-    return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;word-break:keep-all">${item.label}</td>
+    return `<tr>${cc2}<td style="text-align:left;font-size:11.5px;padding:7px 8px;white-space:normal;word-break:break-all">${item.label}</td>
       <td><div class="pf-wrap"><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}p">P</label><input type="radio" name="mgm-rad-l-${item.key}" id="mgm-rad-l-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-l-${item.key}f">F</label></div></td>
       <td><div class="pf-wrap"><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}p" value="P" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}p">P</label><input type="radio" name="mgm-rad-r-${item.key}" id="mgm-rad-r-${item.key}f" value="F" onchange="evalMgRad()"><label for="mgm-rad-r-${item.key}f">F</label></div></td></tr>`;
   }).join('');
