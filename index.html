@@ -20,7 +20,11 @@
   --sidebar:#2d0f1e;--sidebar-t:#c8a8b8;--sidebar-a:#6b2445;--sidebar-hover:rgba(255,255,255,.07)
 }
 body{font-family:system-ui,sans-serif;font-size:14px;color:#2c3e50;background:var(--gray-l);min-height:100vh}
-.app{display:flex;min-height:100vh}
+.app{display:none;min-height:100vh}
+.app.app-visible{display:flex}
+@media(max-width:768px){
+  .app.app-visible{display:flex;flex-direction:column}
+}
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#7b0d2e,#a0295a,#c0392b);display:flex;align-items:center;justify-content:center;z-index:999}
 .login-box{background:#fff;border-radius:16px;padding:36px 40px;width:400px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
 .lb-logo{text-align:center;margin-bottom:22px}
@@ -246,22 +250,45 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 }
 #print-area{display:none}
 @media(max-width:768px){
+  /* 漢堡按鈕 */
   .hamburger{display:flex !important}
+  /* Sidebar：fixed overlay，不佔版面空間 */
   .sidebar{
-    position:fixed !important;top:0;left:0;
-    width:230px !important;height:100vh;
+    position:fixed !important;
+    top:0;left:0;
+    width:230px !important;
+    height:100dvh;
     transform:translateX(-100%);
-    box-shadow:4px 0 28px rgba(0,0,0,.3)
+    box-shadow:4px 0 28px rgba(0,0,0,.3);
+    z-index:200
   }
   .sidebar.open{transform:translateX(0)}
   .sidebar-overlay{display:block}
-  .app{display:block !important}
-  .main{width:100% !important;padding:0;max-width:100% !important}
-  .app-topbar{margin:0 0 0 0;position:sticky;top:0}
-  .page.active{padding:14px 14px 60px}
+  /* App wrapper：讓 main 佔滿全寬 */
+  /* Main 全寬，sidebar 不佔空間 */
+  .main{
+    flex:1 !important;
+    width:100vw !important;
+    max-width:100vw !important;
+    padding:0 !important;
+    overflow-x:hidden
+  }
+  /* Topbar 固定在頂部，消除負 margin */
+  .app-topbar{
+    position:sticky;
+    top:0;
+    z-index:100;
+    margin:0 !important;
+    padding:10px 14px
+  }
+  /* 各 page 的內距 */
+  .page.active{
+    padding:14px 14px 70px !important
+  }
+  /* 元件 RWD */
   .met-grid{grid-template-columns:repeat(2,1fr)}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
-  .frow{grid-template-columns:1fr}
+  .frow{grid-template-columns:1fr !important}
   .mg-score-grid{grid-template-columns:repeat(3,1fr)}
   .print-btn-grid{grid-template-columns:1fr}
   .rec-detail-grid{grid-template-columns:1fr}
@@ -274,7 +301,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   .utbl{font-size:12px}
   .hf{flex-direction:column;gap:8px}
   .hf .fg{width:100%}
-  .login-box{width:92vw;padding:28px 22px}
 }
 </style>
 </head>
@@ -297,7 +323,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
 </div>
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-<div class="app" id="mg-app" style="display:none">
+<div class="app" id="mg-app">
 <nav class="sidebar" id="mg-sidebar">
   <div class="sl-logo">
     <div class="li"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div>
@@ -1005,7 +1031,15 @@ function seedMgData(){
   mgRecords.push({type:'mg-monthly-item',subtype:'mvendor',date:`${ly}-${lms}-22`,staff:'陳靜誼',savedAt:ts,overall:'pass',aop2d:'P',aop3d:'P',note:'',fails:[]});
   mgRecords.push({type:'mg-month-review',month:`${ly}-${lms}`,reviewer:'羅芬鈺',reviewTime:ts,opinion:'本月無異常追蹤事項'});
 }
-loadState();
+// ══ INIT ══
+function initApp(){
+  loadState();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 // ══ GOOGLE SHEETS 同步 ══
 function getSheetsUrl(){return mgCfg.sheetsUrl||'';}
 
@@ -1103,19 +1137,24 @@ function closeSidebar(){
   ov.classList.remove('open');
   document.body.style.overflow='';
 }
-}
 
 // ══ AUTH ══
 function doLogin(){
-  const id=document.getElementById('login-id').value.trim();
-  const pw=document.getElementById('login-pw').value;
-  const u=sharedCfg.users.find(x=>x.id===id&&x.pw===pw);
+  const loginId=document.getElementById('login-id').value.trim();
+  const loginPw=document.getElementById('login-pw').value;
+  const u=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
   if(!u){document.getElementById('login-err').style.display='block';return;}
-  currentUser=u;document.getElementById('login-screen').style.display='none';enterMgApp();
+  currentUser=u;
+  document.getElementById('login-screen').style.display='none';
+  try{ enterMgApp(); }
+  catch(err){ console.error('enterMgApp error:',err); alert('登入初始化錯誤：'+err.message); }
 }
 function enterMgApp(){
   const u=currentUser;
-  document.getElementById('mg-app').style.display='flex';
+  // 根據螢幕寬度設正確 display，避免 inline style 蓋過 media query
+  const appEl=document.getElementById('mg-app');
+  appEl.style.display='';  // 清除 inline style，讓 CSS 控制
+  appEl.classList.add('app-visible');
   document.getElementById('mg-atb-avatar').textContent=u.name.charAt(0);
   document.getElementById('mg-atb-name').textContent=u.name;
   document.getElementById('mg-atb-role').textContent=u.role==='admin'?'管理者':(u.canReview?'覆核人員':'一般使用者');
@@ -1137,7 +1176,9 @@ function enterMgApp(){
 }
 function doLogout(){
   currentUser=null;
-  document.getElementById('mg-app').style.display='none';
+  const appEl=document.getElementById('mg-app');
+  appEl.classList.remove('app-visible');
+  appEl.style.display='';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-id').value='';document.getElementById('login-pw').value='';
   document.getElementById('login-err').style.display='none';
