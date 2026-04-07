@@ -1955,17 +1955,19 @@ function printDoc(html){
     pa.innerHTML='';
   };
   window.addEventListener('afterprint',restore,{once:true});
-  // iOS Safari 不支援 afterprint，用 setTimeout 備援
+  // iOS Safari 不支援 afterprint，用 setTimeout 備援（10秒確保列印完成）
   setTimeout(()=>{
     siblings.forEach(el=>el.removeAttribute('data-print-hidden'));
     pa.innerHTML='';
-  },3000);
+  },10000);
   window.print();
 }
 
 // ══ PRINT HELPERS ══
 const HOSP='新北市立土城醫院　影像診療科';
 const ROC_YEAR=y=>`民國${y-1911}年`;
+const SUBTYPE_LABEL={biopsy:'Biopsy定位',ph2d:'假體2D',ph3d:'假體3D',vendor:'原廠校正(週)',compress:'壓迫厚度',visual:'目視檢查',acq:'擷像工作站',rad:'閱片工作站',mvendor:'原廠校正(月)',semi:'壓迫力測試'};
+const subtypeName=s=>SUBTYPE_LABEL[s]||s||'半年品保';
 
 function yearlyBaseHeader(title,subtitle,yr,eq){
   return `<div class="print-wrap">
@@ -2047,44 +2049,47 @@ function printMgTable01(){
   html+=`<table class="ptbl"><thead><tr>
     <th>項目＼日期（筆次）</th>
     ${allDates.map(d=>{
-      // 同日多筆：找最多筆的 subtype
       const cnts=[bRecs,p2Recs,p3Recs,vRecs].map(arr=>arr.filter(r=>r.date===d).length);
       const maxCnt=Math.max(...cnts,1);
       return maxCnt>1?`<th colspan="${maxCnt}">${d.slice(5)}</th>`:`<th>${d.slice(5)}</th>`;
     }).join('')}
   </tr>
   <tr><th>執行人員</th>${allDates.map(d=>{
+    const cnts=[bRecs,p2Recs,p3Recs,vRecs].map(arr=>arr.filter(r=>r.date===d).length);
+    const maxCnt=Math.max(...cnts,1);
     const staffSet=[...new Set(allWeekly.filter(r=>r.date===d).map(r=>r.staff))];
-    return `<td>${staffSet.join('/')}</td>`;
+    return `<td colspan="${maxCnt}">${staffSet.join('/')}</td>`;
   }).join('')}</tr>
   </thead><tbody>`;
 
-  // Biopsy
-  html+=`<tr><td class="left">GE：定位準確度 (biopsy當日)</td>`;
-  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.loc||'—'}</td>`).join(''):`<td>--</td>`;});
-  html+=`</tr>`;
-  html+=`<tr><td class="left">GE：切片針支撐架之準確度 (biopsy當日)</td>`;
-  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.needle||'—'}</td>`).join(''):`<td>--</td>`;});
-  html+=`</tr>`;
-  html+=`<tr><td class="left">Biopsy定位整體判定(P/F)</td>`;
-  allDates.forEach(d=>{const rs=bRecs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${r.overall==='pass'?'P':'F'}</td>`).join(''):`<td>--</td>`;});
-  html+=`</tr>`;
-  // 2D
-  [['假體影像品質-2D　纖維評分(P/F)','fiber'],['假體影像品質-2D　鈣化點群評分(P/F)','calc'],['假體影像品質-2D　腫塊物評分(P/F)','mass'],['假體影像品質-2D　假影評估','artifact'],['假體影像品質-2D　整體判定(P/F)','overall']].forEach(([label,key])=>{
-    html+=`<tr><td class="left">${label}</td>`;
-    allDates.forEach(d=>{const rs=p2Recs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—')}</td>`).join(''):`<td>--</td>`;});
-    html+=`</tr>`;
+  // 統一處理每一資料行：同日多筆各自一欄，不足最大筆數補空欄
+  const makeRow=(label,recs,valFn)=>{
+    let row=`<tr><td class="left">${label}</td>`;
+    allDates.forEach(d=>{
+      const cnts=[bRecs,p2Recs,p3Recs,vRecs].map(arr=>arr.filter(r=>r.date===d).length);
+      const maxCnt=Math.max(...cnts,1);
+      const rs=recs.filter(r=>r.date===d);
+      if(rs.length===0){row+=`<td colspan="${maxCnt}">--</td>`;}
+      else{
+        rs.forEach(r=>row+=`<td>${valFn(r)}</td>`);
+        for(let i=rs.length;i<maxCnt;i++)row+=`<td>--</td>`;
+      }
+    });
+    return row+`</tr>`;
+  };
+  html+=makeRow('GE：定位準確度 (biopsy當日)',bRecs,r=>r.loc||'—');
+  html+=makeRow('GE：切片針支撐架之準確度 (biopsy當日)',bRecs,r=>r.needle||'—');
+  html+=makeRow('Biopsy定位整體判定(P/F)',bRecs,r=>r.overall==='pass'?'P':'F');
+  [['假體影像品質-2D　纖維評分','fiber'],['假體影像品質-2D　鈣化點群評分','calc'],['假體影像品質-2D　腫塊物評分','mass'],['假體影像品質-2D　假影評估','artifact'],['假體影像品質-2D　整體判定(P/F)','overall']].forEach(([label,key])=>{
+    html+=makeRow(label,p2Recs,r=>key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—'));
   });
-  // 3D
-  [['假體影像品質-3D　纖維評分(P/F)','fiber'],['假體影像品質-3D　鈣化點群評分(P/F)','calc'],['假體影像品質-3D　腫塊物評分(P/F)','mass'],['假體影像品質-3D　整體判定(P/F)','overall']].forEach(([label,key])=>{
-    html+=`<tr><td class="left">${label}</td>`;
-    allDates.forEach(d=>{const rs=p3Recs.filter(r=>r.date===d);html+=rs.length?rs.map(r=>`<td>${key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—')}</td>`).join(''):`<td>--</td>`;});
-    html+=`</tr>`;
+  [['假體影像品質-3D　纖維評分','fiber'],['假體影像品質-3D　鈣化點群評分','calc'],['假體影像品質-3D　腫塊物評分','mass'],['假體影像品質-3D　整體判定(P/F)','overall']].forEach(([label,key])=>{
+    html+=makeRow(label,p3Recs,r=>key==='overall'?r[key]==='pass'?'P':'F':(r[key]??'—'));
   });
   html+=`</tbody></table>`;
 
   // 備註（各筆）
-  const allNotes=allWeekly.filter(r=>r.note).map(r=>`${r.date}(${r.subtype})：${r.note}`);
+  const allNotes=allWeekly.filter(r=>r.note).map(r=>`${r.date}(${subtypeName(r.subtype)})：${r.note}`);
   html+=notesBlock(allNotes);
   html+=monthReviewBlock(reviewer);
   html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
@@ -2271,7 +2276,7 @@ function printMgTable02(){
   const monthNotes=[];
   months.forEach(m=>{
     const allRecs=[...subTypes,'semi'].flatMap(sub=>byMonth[m][sub]);
-    const notes=allRecs.filter(r=>r.note).map(r=>`${r.date}(${r.subtype})：${r.note}`);
+    const notes=allRecs.filter(r=>r.note).map(r=>`${r.date}(${subtypeName(r.subtype)})：${r.note}`);
     if(notes.length)monthNotes.push(`${parseInt(m)}月：${notes.join('；')}`);
   });
   html+=notesBlock(monthNotes);
@@ -2279,7 +2284,7 @@ function printMgTable02(){
   // 逐項覆核
   const allItemRecs=[...subTypes,'semi'].flatMap(sub=>mgRecords.filter(r=>(r.type==='mg-monthly-item'||r.type==='mg-semiannual')&&(r.subtype===sub)&&r.date>=start&&r.date<=end&&r.itemReviewer));
   if(allItemRecs.length){
-    html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${allItemRecs.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`${r.date}（${r.subtype}）　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
+    html+=`<div class="print-review"><strong>逐項覆核資訊</strong><br>${allItemRecs.sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`${r.date}（${subtypeName(r.subtype)}）　覆核人員：${r.itemReviewer}　覆核時間：${r.itemReviewTime||''}　覆核意見：${r.itemOpinion||''}`).join('<br>')}</div>`;
   }
   html+=`<div class="print-time">列印時間：${new Date().toLocaleString('zh-TW')}</div></div>`;
   printDoc(html);
