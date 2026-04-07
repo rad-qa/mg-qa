@@ -257,7 +257,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   body{width:210mm!important;min-width:210mm!important;overflow:visible!important}
   /* 隱藏所有 body 直接子元素，只顯示 print-area */
   body > *{display:none!important}
-  body > #print-area{display:block!important;position:static!important;width:100%!important;margin:0!important;padding:0!important}
+  body > #print-area,
+  body > #print-area.printing{display:block!important;position:static!important;width:100%!important;margin:0!important;padding:0!important;z-index:auto!important}
   /* JS 標記隱藏的元素（備援） */
   [data-print-hidden]{display:none!important}
   .page{display:none!important}
@@ -279,8 +280,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   .print-review{margin-top:6px;font-size:8px;border:1px solid #aaa;padding:5px 7px;background:#f9f9f9;page-break-inside:avoid}
   .print-opinion{margin-top:4px;font-size:8px;border:1px solid #c8a0e8;padding:5px 7px;background:#f5eefa;page-break-inside:avoid}
   .print-time{font-size:7.5px;color:#888;text-align:right;margin-top:6px}
+  .ts{font-size:6px;line-height:1.3}
 }
-#print-area{display:none}
+#print-area{display:none;position:fixed;inset:0;background:#fff;z-index:9999;overflow:auto}
+#print-area.printing{display:block!important}
 @media screen and (max-width:768px){
   /* 漢堡按鈕 */
   .hamburger{display:flex !important}
@@ -1050,13 +1053,30 @@ function nowStamp(){
   const pad=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-// 列印用：把時間戳轉成兩行格式（日期+時間，24小時制）
+// 列印用：把時間戳轉成兩行24小時制格式
 function fmtPrintTime(ts){
-  if(!ts||ts==='--')return'--';
-  // 已是 yyyy/MM/dd HH:mm 格式
-  const p=ts.split(' ');
-  if(p.length>=2)return`<span class="ts">${p[0]}<br>${p[1].slice(0,5)}</span>`;
-  return`<span class="ts">${ts}</span>`;
+  if(!ts||ts==='--'||ts==='')return'--';
+  try{
+    // 嘗試解析各種格式
+    let d=null;
+    if(/\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}/.test(ts)){
+      // 新格式：2026/04/07 13:04
+      d=new Date(ts.replace(/\//g,'-'));
+    } else {
+      // 舊格式：含上下午的 zh-TW 格式，直接用 Date 解析
+      d=new Date(ts);
+    }
+    if(isNaN(d.getTime())){
+      // 無法解析，直接截短顯示
+      return`<span class="ts">${ts.slice(0,16)}</span>`;
+    }
+    const pad=n=>String(n).padStart(2,'0');
+    const date=`${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+    const time=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return`<span class="ts">${date}<br>${time}</span>`;
+  }catch(e){
+    return`<span class="ts">${ts.slice(0,10)}</span>`;
+  }
 }
 function seedMgData(){
   const ts=nowStamp();const today=new Date();const yr=today.getFullYear();const mo=today.getMonth()+1;
@@ -1958,12 +1978,17 @@ function cfgTl(){return mgCfg.tool||DEF_MG_TOOL;}
 function printDoc(html){
   const pa=document.getElementById('print-area');
   pa.innerHTML=html;
-  pa.style.display='block';
-  window.print();
-  // 列印後還原（afterprint 不支援時用 setTimeout）
-  const restore=()=>{pa.style.display='none';pa.innerHTML='';};
-  window.addEventListener('afterprint',restore,{once:true});
-  setTimeout(restore,15000);
+  pa.classList.add('printing');
+  // 短暫延遲確保 DOM 更新後再列印
+  setTimeout(()=>{
+    window.print();
+    const restore=()=>{
+      pa.classList.remove('printing');
+      pa.innerHTML='';
+    };
+    window.addEventListener('afterprint',restore,{once:true});
+    setTimeout(restore,15000);
+  },100);
 }
 
 // ══ PRINT HELPERS ══
