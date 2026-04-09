@@ -290,8 +290,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   .print-time{font-size:7.5px;color:#888;text-align:right;margin-top:6px}
   .ts{font-size:6px;line-height:1.3}
 }
-#print-area{display:none;position:fixed;inset:0;background:#fff;z-index:9999;overflow:auto}
-#print-area.printing{display:block!important}
+#print-area{display:none}
+#print-area.printing{display:block;position:fixed;inset:0;background:#fff;z-index:9999;overflow:auto;visibility:hidden}
+@media print{
+  #print-area.printing{visibility:visible}
+}
 @media screen and (max-width:768px){
   /* 漢堡按鈕 */
   .hamburger{display:flex !important}
@@ -387,8 +390,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   <button class="nav-btn" onclick="showMgPage('print',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>列印報表</button>
   <button class="nav-btn" onclick="showMgPage('history',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 107-7v5h-2l3.25 3.25L17.5 12H15V7h-2z"/></svg>歷史查詢<span class="nav-badge" id="mg-review-badge" style="display:none">0</span></button>
   <button class="nav-btn" id="mg-nav-settings" style="display:none" onclick="showMgPage('settings',this)"><svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.6.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.4-.12.6l1.92 3.32c.12.22.37.29.6.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 110-7.2 3.6 3.6 0 010 7.2z"/></svg>系統設定</button>
-  <!-- ★ 登出按鈕移至系統設定下方，手機版也能看到 -->
-  <div class="sl-bot">
+  <div style="padding:4px 6px 0">
     <button class="logout-btn" onclick="doLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>登出</button>
   </div>
 </nav>
@@ -1293,33 +1295,48 @@ function closeSidebar(){
 function doLogin(){
   const loginId=document.getElementById('login-id').value.trim();
   const loginPw=document.getElementById('login-pw').value;
-  // 先用本地資料驗證帳號密碼
-  const u=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
-  if(!u){document.getElementById('login-err').style.display='block';return;}
-  currentUser=u;
-  // 顯示載入畫面，從 Sheets 拉最新資料
   const ls=document.getElementById('loading-screen');
   const lm=document.getElementById('loading-msg');
-  document.getElementById('login-screen').style.display='none';
-  ls.classList.add('show');
-  lm.textContent='正在從雲端載入最新資料...';
-  fetchAllFromSheets().then(ok=>{
-    // 重新驗證（資料更新後帳密可能有變）
-    const u2=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
-    currentUser=u2||u; // 若帳號仍存在用新資料，否則用原本的
-    ls.classList.remove('show');
-    if(!currentUser){
+
+  // 本地驗證
+  const u=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
+  if(u){
+    // 本地驗證成功：進入載入流程
+    currentUser=u;
+    document.getElementById('login-screen').style.display='none';
+    ls.classList.add('show');
+    lm.textContent='正在從雲端載入最新資料...';
+    fetchAllFromSheets().then(()=>{
+      const u2=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
+      currentUser=u2||u;
+      ls.classList.remove('show');
+      try{ enterMgApp(); }catch(err){ alert('登入初始化錯誤：'+err.message); }
+    }).catch(()=>{
+      ls.classList.remove('show');
+      try{ enterMgApp(); }catch(err){ alert('登入初始化錯誤：'+err.message); }
+    });
+  } else {
+    // 本地驗證失敗：先從 Sheets 拉最新資料再驗證
+    document.getElementById('login-screen').style.display='none';
+    ls.classList.add('show');
+    lm.textContent='正在驗證帳號...';
+    fetchAllFromSheets().then(ok=>{
+      const u2=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
+      ls.classList.remove('show');
+      if(!u2){
+        // Sheets 驗證也失敗
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('login-err').style.display='block';
+        return;
+      }
+      currentUser=u2;
+      try{ enterMgApp(); }catch(err){ alert('登入初始化錯誤：'+err.message); }
+    }).catch(()=>{
+      ls.classList.remove('show');
       document.getElementById('login-screen').style.display='flex';
       document.getElementById('login-err').style.display='block';
-      return;
-    }
-    try{ enterMgApp(); }
-    catch(err){ console.error('enterMgApp error:',err); alert('登入初始化錯誤：'+err.message); }
-  }).catch(err=>{
-    ls.classList.remove('show');
-    try{ enterMgApp(); }
-    catch(e){ alert('登入初始化錯誤：'+e.message); }
-  });
+    });
+  }
 }
 function enterMgApp(){
   const u=currentUser;
@@ -2003,8 +2020,46 @@ function viewMgRecord(i){
   openModal('rec-detail-modal');
 }
 function exportMgExcel(){
-  const data=filteredMgRecords.map(r=>({日期:r.date,類型:r.type,子項目:r.subtype||'',品保人員:r.staff,整體判定:r.overall==='pass'?'合格':'不合格',不合格項目:(r.fails||[]).join('；'),備註:r.note||'',覆核人:r.itemReviewer||'',覆核時間:r.itemReviewTime||'',覆核意見:r.itemOpinion||''}));
-  const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'品保紀錄');XLSX.writeFile(wb,`mg_qa_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const rows=filteredMgRecords.map(r=>{
+    const base={
+      日期:r.date||'',類型:r.type||'',子項目:r.subtype||'',
+      品保人員:r.staff||'',整體判定:r.overall==='pass'?'合格':'不合格',
+      不合格項目:(r.fails||[]).join('；'),備註:r.note||'',
+      覆核人:r.itemReviewer||'',覆核時間:r.itemReviewTime||'',覆核意見:r.itemOpinion||''
+    };
+    // 依子項目展開詳細數據
+    if(r.subtype==='ph2d'||r.subtype==='ph3d'){
+      Object.assign(base,{kVp:r.kvp??'',mAs:r.mas??'','AGD(mGy)':r.dose??'',
+        窗寬:r.ww??'',窗高:r.wl??'',纖維評分:r.fiber??'',鈣化點群評分:r.calc??'',
+        腫塊物評分:r.mass??'',假影評估:r.artifact||'',
+        ...(r.subtype==='ph3d'?{切片深度:r.slice??''}:{})});
+    } else if(r.subtype==='biopsy'){
+      Object.assign(base,{定位準確度:r.loc||'',切片針支撐架準確度:r.needle||''});
+    } else if(r.subtype==='vendor'){
+      Object.assign(base,{'flat_field_2D':r.ff2d||'','flat_field_Biopsy':r.ffBiopsy||'',
+        'flat_field_3D':r.ff3d||'','IQST':r.iqst||'',
+        'ACR纖維':r.acrFiber??'','ACR鈣化點群':r.acrCalc??'','ACR腫塊物':r.acrMass??''});
+    } else if(r.subtype==='compress'){
+      Object.assign(base,{壓迫顯示厚度:r.dispThick??'','偏差(cm)':r.diff!=null?(r.diff>=0?'+':'')+r.diff.toFixed(2):''});
+    } else if(r.subtype==='visual'||r.subtype==='acq'){
+      const items=r.items||{};
+      Object.keys(items).forEach(k=>{base['項目_'+k]=items[k];});
+    } else if(r.subtype==='rad'){
+      const iL=r.itemsL||{},iR=r.itemsR||{};
+      Object.keys(iL).forEach(k=>{base['左螢幕_'+k]=iL[k];});
+      Object.keys(iR).forEach(k=>{base['右螢幕_'+k]=iR[k];});
+      Object.assign(base,{左螢幕整體:r.overallL==='pass'?'P':'F',右螢幕整體:r.overallR==='pass'?'P':'F'});
+    } else if(r.subtype==='mvendor'){
+      Object.assign(base,{'AOP_2D':r.aop2d||'','AOP_3D':r.aop3d||''});
+    } else if(r.type==='mg-semiannual'){
+      Object.assign(base,{'手動微調壓迫力':r.manual2d??'','電動驅動初始壓迫力':r.motorN??'','取像過程壓迫力':r.p3||''});
+    }
+    return base;
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'品保紀錄');
+  XLSX.writeFile(wb,`mg_qa_export_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 // ══ TREND ══
 function applyTrendQuick(){
