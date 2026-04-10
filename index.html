@@ -775,7 +775,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   <div class="hf">
     <div class="fg"><label>類型</label><select id="mg-h-type" style="width:140px"><option value="">全部</option><option value="mg-weekly">每週</option><option value="mg-monthly-item">每月</option><option value="mg-semiannual">每半年</option></select></div>
     <div class="fg"><label>月份</label><input type="month" id="mg-h-month" style="width:148px"></div>
-    <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button></div></div>
+    <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button><button class="btn btn-teal btn-sm" onclick="manualSyncHistory()">↻ 同步資料</button></div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="scroll-hint-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
@@ -1060,6 +1060,8 @@ const MG_RAD_ITEMS=[
 const WEEKLY_SUBTYPES=['biopsy','ph2d','ph3d','vendor'];
 
 let sharedCfg={},mgCfg={},mgRecords=[];
+let deletedKeys=new Set(); // 已刪除紀錄的 key（savedAt|date|type）
+let autoSyncTimer=null;   // 自動背景同步 timer
 let currentUser=null,pendingSaveData=null,currentMrMonth=null,currentItemReviewIdx=null;
 let mgFChart=null,mgCChart=null,mgMChartInst=null,mgMonthChart=null,mgTMode='2d';
 let filteredMgRecords=[];
@@ -1079,13 +1081,19 @@ function loadState(){
   if(!mgCfg.notifyPrefs)mgCfg.notifyPrefs={};
   if(!mgCfg.sheetsUrl)mgCfg.sheetsUrl='https://script.google.com/macros/s/AKfycbwYD1xG1Tv3GxCp1e_dfFs1EVQUY42cwkNctVEpC41KiHdnbP6zd8kneYb5D7X0-p78/exec';
   try{mgRecords=JSON.parse(localStorage.getItem('mg-rec-v3'))||[];}catch(e){mgRecords=[];}
+  // 載入已刪除 key 集合
+  try{const dk=JSON.parse(localStorage.getItem('mg-deleted-keys-v1'))||[];deletedKeys=new Set(dk);}catch(e){deletedKeys=new Set();}
   if(!mgRecords.length) seedMgData();
 }
 function saveState(){
   localStorage.setItem('shared-cfg-v3',JSON.stringify(sharedCfg));
   localStorage.setItem('mg-cfg-v3',JSON.stringify(mgCfg));
   localStorage.setItem('mg-rec-v3',JSON.stringify(mgRecords));
+  localStorage.setItem('mg-deleted-keys-v1',JSON.stringify([...deletedKeys]));
 }
+// 紀錄唯一鍵（與 Code.gs 的 recKey 對應）
+function recKeyLocal(r){return `${r.savedAt||''}|${r.date||''}|${r.type||''}`;}
+
 function nowStamp(){
   const d=new Date();
   const pad=n=>String(n).padStart(2,'0');
@@ -1204,6 +1212,21 @@ async function deleteRecordInSheets(rec){
   }catch(e){console.warn('deleteRecord failed:',e);}
 }
 
+// ── 背景自動同步（每1分鐘）──
+function startAutoSync(){
+  stopAutoSync();
+  autoSyncTimer=setInterval(async()=>{
+    if(!currentUser)return;
+    await fetchAllFromSheets();
+    filteredMgRecords=[...mgRecords];
+    renderMgDash();
+    updateMgReviewBadge();
+  },60000);
+}
+function stopAutoSync(){
+  if(autoSyncTimer){clearInterval(autoSyncTimer);autoSyncTimer=null;}
+}
+
 // ── 管理員手動合併同步（不覆蓋，與 Sheets 合併去重）──
 async function syncRecordsToSheets(){
   const url=getSheetsUrl();if(!url)return;
@@ -1211,7 +1234,7 @@ async function syncRecordsToSheets(){
   await callSafe(url,{action:'mergeSync',data:mgRecords},elId,'合併同步完成，共 '+mgRecords.length+' 筆');
 }
 
-// 從 Sheets 讀取所有資料（登入時呼叫）
+// 從 Sheets 讀取所有資料（登入時 / 背景同步呼叫）
 async function fetchAllFromSheets(){
   const url=getSheetsUrl();if(!url)return false;
   try{
@@ -1230,14 +1253,23 @@ async function fetchAllFromSheets(){
     if(data.tool)     mgCfg.tool=data.tool;
     if(data.phantom)  mgCfg.phantom=data.phantom;
     if(data.hints)    mgCfg.hints=data.hints;
-    // 品保紀錄：合併（Sheets 為主，本地補充 Sheets 沒有的）
+    // 品保紀錄：合併，排除已刪除
     if(data.records&&data.records.length){
-      const recKey=r=>`${r.type||''}|${r.subtype||''}|${r.date||''}|${r.savedAt||''}`;
       const merged={};
-      // 先放 Sheets 的資料
-      data.records.forEach(r=>{if(r&&r.type)merged[recKey(r)]=r;});
-      // 再補本地有但 Sheets 沒有的（可能是離線時填寫的）
-      mgRecords.forEach(r=>{if(r&&r.type&&!merged[recKey(r)])merged[recKey(r)]=r;});
+      // Sheets 資料為主（過濾 deletedKeys）
+      data.records.forEach(r=>{
+        if(!r||!r.type)return;
+        // 日期格式修正（防止 T16:00:00Z 格式）
+        if(r.date&&r.date.length>10)r.date=r.date.slice(0,10);
+        if(deletedKeys.has(recKeyLocal(r)))return;
+        merged[recKeyLocal(r)]=r;
+      });
+      // 補本地獨有（離線填寫的，排除 deletedKeys）
+      mgRecords.forEach(r=>{
+        if(!r||!r.type)return;
+        if(deletedKeys.has(recKeyLocal(r)))return;
+        if(!merged[recKeyLocal(r)])merged[recKeyLocal(r)]=r;
+      });
       mgRecords=Object.values(merged).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     }
     saveState();
@@ -1399,8 +1431,10 @@ function enterMgApp(){
   applyMgHints();applyPhantomCfg();applyCompressCfg();applyToolCfg();
   filteredMgRecords=[...mgRecords];renderMgDash();updateMgReviewBadge();
   setTimeout(initScrollHints,100);
+  startAutoSync();
 }
 function doLogout(){
+  stopAutoSync();
   currentUser=null;
   const appEl=document.getElementById('mg-app');
   appEl.classList.remove('app-visible');
@@ -1979,6 +2013,15 @@ function submitItemReview(){
   showToast('✓ 項目覆核已完成');
 }
 // ══ HISTORY ══
+async function manualSyncHistory(){
+  showToast('正在同步資料...','tok');
+  const ok=await fetchAllFromSheets();
+  filteredMgRecords=[...mgRecords];
+  filterMgHistory();
+  renderMgDash();
+  updateMgReviewBadge();
+  showToast(ok?'同步完成，資料已更新':'同步失敗，使用本地資料',ok?'tok':'twarn');
+}
 function filterMgHistory(){
   const type=document.getElementById('mg-h-type').value;
   const month=document.getElementById('mg-h-month').value;
@@ -2019,7 +2062,7 @@ function deleteMgRecord(i){
   if(!confirm('確定要刪除此筆紀錄嗎？此動作無法復原。'))return;
   const rec=filteredMgRecords[i];if(!rec)return;
   const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
-  const deletedRec=mgRecords[realIdx];mgRecords.splice(realIdx,1);saveState();deleteRecordInSheets(deletedRec);
+  const deletedRec=mgRecords[realIdx];mgRecords.splice(realIdx,1);deletedKeys.add(recKeyLocal(deletedRec));saveState();deleteRecordInSheets(deletedRec);
   filteredMgRecords=filteredMgRecords.filter((_,ii)=>ii!==i);
   renderMgHistory(filteredMgRecords);updateMgReviewBadge();renderMgDash();
   showToast('紀錄已刪除');
