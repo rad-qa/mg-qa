@@ -1177,11 +1177,38 @@ async function testSheetsConnection(){
   }
 }
 
-// 同步所有品保紀錄至 Sheets
+// ── 新增一筆紀錄到 Sheets（append，不覆蓋）──
+async function appendRecordToSheets(rec){
+  const url=getSheetsUrl();if(!url)return;
+  try{
+    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'appendRecord',data:rec})});
+  }catch(e){console.warn('appendRecord failed:',e);}
+}
+
+// ── 更新 Sheets 上已存在的紀錄（覆核、重複儲存）──
+async function updateRecordInSheets(rec){
+  const url=getSheetsUrl();if(!url)return;
+  try{
+    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'updateRecord',data:rec})});
+  }catch(e){console.warn('updateRecord failed:',e);}
+}
+
+// ── 刪除一筆紀錄（軟刪除）──
+async function deleteRecordInSheets(rec){
+  const url=getSheetsUrl();if(!url)return;
+  try{
+    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'deleteRecord',data:rec})});
+  }catch(e){console.warn('deleteRecord failed:',e);}
+}
+
+// ── 管理員手動合併同步（不覆蓋，與 Sheets 合併去重）──
 async function syncRecordsToSheets(){
   const url=getSheetsUrl();if(!url)return;
   const elId='manual-sync-status';
-  await callSafe(url,{action:'syncRecords',data:mgRecords},elId,'品保紀錄已同步至 Google Sheets，共 '+mgRecords.length+' 筆');
+  await callSafe(url,{action:'mergeSync',data:mgRecords},elId,'合併同步完成，共 '+mgRecords.length+' 筆');
 }
 
 // 從 Sheets 讀取所有資料（登入時呼叫）
@@ -1191,7 +1218,7 @@ async function fetchAllFromSheets(){
     const res=await fetch(url+'?action=getAll');
     const data=await res.json();
     if(!data.ok)return false;
-    // 覆蓋本地資料
+    // 設定類資料：直接覆蓋本地
     if(data.users&&data.users.length){
       sharedCfg.users=data.users;
       sharedCfg.users.forEach(u=>{if(u.role==='admin')u.canReview=true;if(u.canReview===undefined)u.canReview=false;if(!u.email)u.email='';});
@@ -1203,7 +1230,16 @@ async function fetchAllFromSheets(){
     if(data.tool)     mgCfg.tool=data.tool;
     if(data.phantom)  mgCfg.phantom=data.phantom;
     if(data.hints)    mgCfg.hints=data.hints;
-    if(data.records&&data.records.length) mgRecords=data.records;
+    // 品保紀錄：合併（Sheets 為主，本地補充 Sheets 沒有的）
+    if(data.records&&data.records.length){
+      const recKey=r=>`${r.type||''}|${r.subtype||''}|${r.date||''}|${r.savedAt||''}`;
+      const merged={};
+      // 先放 Sheets 的資料
+      data.records.forEach(r=>{if(r&&r.type)merged[recKey(r)]=r;});
+      // 再補本地有但 Sheets 沒有的（可能是離線時填寫的）
+      mgRecords.forEach(r=>{if(r&&r.type&&!merged[recKey(r)])merged[recKey(r)]=r;});
+      mgRecords=Object.values(merged).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    }
     saveState();
     return true;
   }catch(e){
@@ -1686,7 +1722,7 @@ function saveWTab(tabName){
     pendingSaveData={rec,dupIdx:existIdx};
     document.getElementById('dup-detail').innerHTML=`<p><strong>${label}</strong> 在 <strong>${d}</strong> 已有紀錄（${mgRecords[existIdx].staff}，${mgRecords[existIdx].savedAt}）</p>`;
     openModal('dup-modal');
-  } else {mgRecords.push(rec);saveState();updateMgReviewBadge();renderMgDash();showToast(`✓ ${label} 已儲存`);syncRecordsToSheets();}
+  } else {mgRecords.push(rec);saveState();updateMgReviewBadge();renderMgDash();showToast(`✓ ${label} 已儲存`);appendRecordToSheets(rec);}
 }
 function clearWTab(tabName){
   if(!confirm('確定要清除此項目的填寫資料嗎？'))return;
@@ -1748,7 +1784,7 @@ function saveMTab(tabName){
     pendingSaveData={rec,dupIdx:existIdx};
     document.getElementById('dup-detail').innerHTML=`<p><strong>${label}</strong> 在 <strong>${d}</strong> 已有紀錄（${mgRecords[existIdx].staff}，${mgRecords[existIdx].savedAt}）</p>`;
     openModal('dup-modal');
-  } else {mgRecords.push(rec);saveState();renderMgDash();showToast(`✓ ${label} 已儲存`);syncRecordsToSheets();}
+  } else {mgRecords.push(rec);saveState();renderMgDash();showToast(`✓ ${label} 已儲存`);appendRecordToSheets(rec);}
 }
 function clearMTab(tabName){
   if(!confirm('確定要清除此項目的填寫資料嗎？'))return;
@@ -1788,14 +1824,13 @@ function saveMgSemiannual(){
   const rec={type:'mg-semiannual',date:d,staff:currentUser.name,savedAt:nowStamp(),overall:fails.length===0?'pass':'fail',manual2d:manual,motorN:motor,p3:p3.value,fails,note:document.getElementById('mgs-note').value||''};
   const moStr=d.slice(0,7),dupIdx=mgRecords.findIndex(r=>r.type==='mg-semiannual'&&r.date?.startsWith(moStr));
   if(dupIdx>=0){pendingSaveData={rec,dupIdx};document.getElementById('dup-detail').innerHTML=`<p>本月（${moStr}）已有半年品保紀錄（${mgRecords[dupIdx].staff}）</p>`;openModal('dup-modal');return;}
-  mgRecords.push(rec);saveState();renderMgDash();showToast('✓ 每半年品保已儲存');syncRecordsToSheets();
+  mgRecords.push(rec);saveState();renderMgDash();showToast('✓ 每半年品保已儲存');appendRecordToSheets(rec);
 }
 function clearMgSemiannual(){if(!confirm('確定要清除嗎？'))return;onDateChange('semi');showToast('已清除');}
 function dupAction(action){
   closeModal('dup-modal');if(!pendingSaveData)return;
   const{rec,dupIdx}=pendingSaveData;
-  if(action==='overwrite')mgRecords[dupIdx]=rec;else mgRecords.push(rec);
-  saveState();updateMgReviewBadge();renderMgDash();syncRecordsToSheets();
+  if(action==='overwrite'){mgRecords[dupIdx]=rec;saveState();updateMgReviewBadge();renderMgDash();updateRecordInSheets(rec);}else{mgRecords.push(rec);saveState();updateMgReviewBadge();renderMgDash();appendRecordToSheets(rec);}
   const sl={biopsy:'Biopsy定位',ph2d:'假體影像品質 — 2D模式',ph3d:'假體影像品質 — 3D模式',vendor:'原廠特定校正（每週）',compress:'壓迫厚度顯示準確性',visual:'目視檢查',acq:'擷像工作站品管',rad:'閱片工作站品管',mvendor:'原廠特定校正（每月）'};
   showToast(`✓ ${sl[rec.subtype]||rec.type} 已儲存`);pendingSaveData=null;
 }
@@ -1896,8 +1931,10 @@ function submitMgReview(){
   if(hasOp&&!opinion){showToast('請填寫覆核意見','terr');return;}
   const rec={type:'mg-month-review',month:currentMrMonth,reviewer:currentUser.name,reviewTime:nowStamp(),opinion};
   const di=mgRecords.findIndex(r=>r.type==='mg-month-review'&&r.month===currentMrMonth);
+  const isNewReview=(di<0);
   if(di>=0) mgRecords[di]=rec;else mgRecords.push(rec);
-  saveState();updateMgReviewBadge();closeModal('month-review-modal');renderMgMonthReviewList();syncRecordsToSheets();
+  saveState();updateMgReviewBadge();closeModal('month-review-modal');renderMgMonthReviewList();
+  if(isNewReview)appendRecordToSheets(rec);else updateRecordInSheets(rec);syncRecordsToSheets();
   showToast(`✓ ${currentMrMonth} 月份覆核已完成`);
 }
 
@@ -1937,7 +1974,7 @@ function submitItemReview(){
   mgRecords[realIdx].itemReviewer=currentUser.name;
   mgRecords[realIdx].itemReviewTime=nowStamp();
   mgRecords[realIdx].itemOpinion=opinion;
-  saveState();syncRecordsToSheets();closeModal('item-review-modal');
+  saveState();updateRecordInSheets(mgRecords[realIdx]);closeModal('item-review-modal');
   filteredMgRecords=[...mgRecords];filterMgHistory();
   showToast('✓ 項目覆核已完成');
 }
@@ -1982,7 +2019,7 @@ function deleteMgRecord(i){
   if(!confirm('確定要刪除此筆紀錄嗎？此動作無法復原。'))return;
   const rec=filteredMgRecords[i];if(!rec)return;
   const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
-  mgRecords.splice(realIdx,1);saveState();syncRecordsToSheets();
+  const deletedRec=mgRecords[realIdx];mgRecords.splice(realIdx,1);saveState();deleteRecordInSheets(deletedRec);
   filteredMgRecords=filteredMgRecords.filter((_,ii)=>ii!==i);
   renderMgHistory(filteredMgRecords);updateMgReviewBadge();renderMgDash();
   showToast('紀錄已刪除');
