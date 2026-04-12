@@ -1091,9 +1091,8 @@ function saveState(){
   localStorage.setItem('mg-rec-v3',JSON.stringify(mgRecords));
   localStorage.setItem('mg-deleted-keys-v1',JSON.stringify([...deletedKeys]));
 }
-// 紀錄唯一鍵（與 Code.gs 的 recKey 對應）
-function recKeyLocal(r){return `${r.savedAt||''}|${r.date||''}|${r.type||''}`;}
-
+// 紀錄唯一鍵（與 Code.gs 的 recKey 對應，只用 savedAt）
+function recKeyLocal(r){return String(r.savedAt||'');}
 function nowStamp(){
   const d=new Date();
   const pad=n=>String(n).padStart(2,'0');
