@@ -1091,12 +1091,15 @@ function saveState(){
   localStorage.setItem('mg-rec-v3',JSON.stringify(mgRecords));
   localStorage.setItem('mg-deleted-keys-v1',JSON.stringify([...deletedKeys]));
 }
-// 紀錄唯一鍵（與 Code.gs 的 recKey 對應，只用 savedAt）
-function recKeyLocal(r){return String(r.savedAt||'');}
+// 紀錄唯一鍵（與 Code.gs 的 recKey/normSavedAt 對應）
+function recKeyLocal(r){
+  return String(r.savedAt||'').replace(/\//g,'-').replace(' ','_').trim();
+}
 function nowStamp(){
   const d=new Date();
   const pad=n=>String(n).padStart(2,'0');
-  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // 用底線分隔日期時間，避免 Google Sheets 自動轉成 Date 物件
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 // 列印用：只顯示日期（不含時間）
 function fmtPrintTime(ts){
