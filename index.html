@@ -1207,8 +1207,10 @@ async function updateRecordInSheets(rec){
 async function deleteRecordInSheets(rec){
   const url=getSheetsUrl();if(!url)return;
   try{
-    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({action:'deleteRecord',data:rec})});
+    const result=await res.json();
+    if(!result.ok)console.warn('deleteRecord GS error:',result.message);
   }catch(e){console.warn('deleteRecord failed:',e);}
 }
 
@@ -1253,25 +1255,23 @@ async function fetchAllFromSheets(){
     if(data.tool)     mgCfg.tool=data.tool;
     if(data.phantom)  mgCfg.phantom=data.phantom;
     if(data.hints)    mgCfg.hints=data.hints;
-    // 品保紀錄：合併，排除已刪除
-    if(data.records&&data.records.length){
-      const merged={};
-      // Sheets 資料為主（過濾 deletedKeys）
-      data.records.forEach(r=>{
-        if(!r||!r.type)return;
-        // 日期格式修正（防止 T16:00:00Z 格式）
-        if(r.date&&r.date.length>10)r.date=r.date.slice(0,10);
-        if(deletedKeys.has(recKeyLocal(r)))return;
-        merged[recKeyLocal(r)]=r;
-      });
-      // 補本地獨有（離線填寫的，排除 deletedKeys）
-      mgRecords.forEach(r=>{
-        if(!r||!r.type)return;
-        if(deletedKeys.has(recKeyLocal(r)))return;
-        if(!merged[recKeyLocal(r)])merged[recKeyLocal(r)]=r;
-      });
-      mgRecords=Object.values(merged).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-    }
+    // 品保紀錄：Sheets 為主，本地補充離線紀錄
+    const sheetsRecs=data.records||[];
+    // 先建立 Sheets 的 key set（過濾 deletedKeys）
+    const merged={};
+    sheetsRecs.forEach(r=>{
+      if(!r||!r.type)return;
+      if(r.date&&r.date.length>10)r.date=r.date.slice(0,10);
+      if(deletedKeys.has(recKeyLocal(r)))return;
+      merged[recKeyLocal(r)]=r; // Sheets 優先
+    });
+    // 本地只補 Sheets 沒有的（離線填寫），排除 deletedKeys
+    mgRecords.forEach(r=>{
+      if(!r||!r.type)return;
+      if(deletedKeys.has(recKeyLocal(r)))return;
+      if(!merged[recKeyLocal(r)])merged[recKeyLocal(r)]=r;
+    });
+    mgRecords=Object.values(merged).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     saveState();
     return true;
   }catch(e){
@@ -2014,13 +2014,21 @@ function submitItemReview(){
 }
 // ══ HISTORY ══
 async function manualSyncHistory(){
-  showToast('正在同步資料...','tok');
+  showToast('正在從雲端同步資料...','tok');
+  const before=mgRecords.length;
   const ok=await fetchAllFromSheets();
   filteredMgRecords=[...mgRecords];
   filterMgHistory();
   renderMgDash();
   updateMgReviewBadge();
-  showToast(ok?'同步完成，資料已更新':'同步失敗，使用本地資料',ok?'tok':'twarn');
+  if(ok){
+    const after=mgRecords.length;
+    const diff=after-before;
+    const diffStr=diff>0?'(+'+diff+')':(diff<0?'('+diff+')':'');
+    showToast('同步完成，共 '+after+' 筆紀錄 '+diffStr,'tok');
+  } else {
+    showToast('同步失敗，顯示本地資料','twarn');
+  }
 }
 function filterMgHistory(){
   const type=document.getElementById('mg-h-type').value;
@@ -2058,14 +2066,19 @@ function renderMgHistory(recs){
     return `<tr><td>${r.date||'—'}</td><td>${typeLabel[r.type]||r.type}</td><td>${subLabel[r.subtype]||'—'}</td><td>${r.staff||'—'}</td><td><span class="badge ${r.overall==='pass'?'bp':r.overall==='fail'?'bf':'bn'}">${r.overall==='pass'?'合格':'不合格'}</span></td><td>${reviewStatus}</td><td style="white-space:nowrap;display:flex;gap:4px;align-items:center"><button class="btn btn-sm" onclick="viewMgRecord(${i})">詳情</button>${reviewBtn}${deleteBtn}</td></tr>`;
   }).join('');
 }
-function deleteMgRecord(i){
+async function deleteMgRecord(i){
   if(!confirm('確定要刪除此筆紀錄嗎？此動作無法復原。'))return;
   const rec=filteredMgRecords[i];if(!rec)return;
   const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
-  const deletedRec=mgRecords[realIdx];mgRecords.splice(realIdx,1);deletedKeys.add(recKeyLocal(deletedRec));saveState();deleteRecordInSheets(deletedRec);
+  const deletedRec=mgRecords[realIdx];
+  mgRecords.splice(realIdx,1);
+  deletedKeys.add(recKeyLocal(deletedRec));
+  saveState();
   filteredMgRecords=filteredMgRecords.filter((_,ii)=>ii!==i);
   renderMgHistory(filteredMgRecords);updateMgReviewBadge();renderMgDash();
-  showToast('紀錄已刪除');
+  showToast('紀錄已刪除，正在同步...');
+  await deleteRecordInSheets(deletedRec);
+  showToast('紀錄已刪除並同步至雲端');
 }
 function showMonthReviewOpinion(mo){
   const rev=mgRecords.find(r=>r.type==='mg-month-review'&&r.month===mo);
