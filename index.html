@@ -1243,7 +1243,8 @@ async function syncRecordsToSheets(){
 }
 
 // 從 Sheets 讀取所有資料（登入時 / 背景同步呼叫）
-async function fetchAllFromSheets(){
+// isLogin=true 時才補充本地離線資料，平常背景同步以 Sheets 為準
+async function fetchAllFromSheets(isLogin=false){
   const url=getSheetsUrl();if(!url)return false;
   try{
     const res=await fetch(url+'?action=getAll');
@@ -1261,22 +1262,30 @@ async function fetchAllFromSheets(){
     if(data.tool)     mgCfg.tool=data.tool;
     if(data.phantom)  mgCfg.phantom=data.phantom;
     if(data.hints)    mgCfg.hints=data.hints;
-    // 品保紀錄：Sheets 為主，本地補充離線紀錄
+    // 品保紀錄：Sheets 為唯一來源
     const sheetsRecs=data.records||[];
-    // 先建立 Sheets 的 key set（過濾 deletedKeys）
+    // 建立 Sheets 資料的 key set
+    const sheetsKeys=new Set();
     const merged={};
     sheetsRecs.forEach(r=>{
       if(!r||!r.type)return;
       if(r.date&&r.date.length>10)r.date=r.date.slice(0,10);
-      if(deletedKeys.has(recKeyLocal(r)))return;
-      merged[recKeyLocal(r)]=r; // Sheets 優先
+      const k=recKeyLocal(r);
+      sheetsKeys.add(k);
+      merged[k]=r; // Sheets 資料為主
     });
-    // 本地只補 Sheets 沒有的（離線填寫），排除 deletedKeys
-    mgRecords.forEach(r=>{
-      if(!r||!r.type)return;
-      if(deletedKeys.has(recKeyLocal(r)))return;
-      if(!merged[recKeyLocal(r)])merged[recKeyLocal(r)]=r;
-    });
+    // 只有登入時才補充本地離線資料（Sheets 沒有的 + 不在 deletedKeys 裡）
+    if(isLogin){
+      mgRecords.forEach(r=>{
+        if(!r||!r.type)return;
+        const k=recKeyLocal(r);
+        if(deletedKeys.has(k))return;   // 本地已刪除的不補
+        if(sheetsKeys.has(k))return;    // Sheets 已有的不覆蓋
+        merged[k]=r;                    // 補入離線填寫的
+        // 離線紀錄要 append 到 Sheets
+        appendRecordToSheets(r);
+      });
+    }
     mgRecords=Object.values(merged).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     saveState();
     return true;
@@ -1380,7 +1389,7 @@ function doLogin(){
     document.getElementById('login-screen').style.display='none';
     ls.classList.add('show');
     lm.textContent='正在從雲端載入最新資料...';
-    fetchAllFromSheets().then(()=>{
+    fetchAllFromSheets(true).then(()=>{
       const u2=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
       currentUser=u2||u;
       ls.classList.remove('show');
@@ -1394,7 +1403,7 @@ function doLogin(){
     document.getElementById('login-screen').style.display='none';
     ls.classList.add('show');
     lm.textContent='正在驗證帳號...';
-    fetchAllFromSheets().then(ok=>{
+    fetchAllFromSheets(true).then(ok=>{
       const u2=sharedCfg.users.find(x=>x.id===loginId&&String(x.pw)===String(loginPw));
       ls.classList.remove('show');
       if(!u2){
