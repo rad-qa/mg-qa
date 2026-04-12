@@ -1207,13 +1207,17 @@ async function updateRecordInSheets(rec){
 
 // ── 刪除一筆紀錄（軟刪除）──
 async function deleteRecordInSheets(rec){
-  const url=getSheetsUrl();if(!url)return;
+  const url=getSheetsUrl();
+  if(!url){console.warn('deleteRecordInSheets: no URL');return;}
+  console.log('送出 deleteRecord，savedAt=',rec.savedAt);
   try{
     const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({action:'deleteRecord',data:rec})});
     const result=await res.json();
+    console.log('deleteRecord 回應：',result);
     if(!result.ok)console.warn('deleteRecord GS error:',result.message);
-  }catch(e){console.warn('deleteRecord failed:',e);}
+    else showToast('已同步刪除至雲端');
+  }catch(e){console.warn('deleteRecord fetch failed:',e);}
 }
 
 // ── 背景自動同步（每1分鐘）──
@@ -2070,17 +2074,24 @@ function renderMgHistory(recs){
 }
 async function deleteMgRecord(i){
   if(!confirm('確定要刪除此筆紀錄嗎？此動作無法復原。'))return;
-  const rec=filteredMgRecords[i];if(!rec)return;
-  const realIdx=mgRecords.indexOf(rec);if(realIdx<0)return;
+  const rec=filteredMgRecords[i];
+  if(!rec){console.warn('deleteMgRecord: rec not found at index',i);return;}
+  const realIdx=mgRecords.indexOf(rec);
+  if(realIdx<0){console.warn('deleteMgRecord: rec not found in mgRecords');return;}
   const deletedRec=mgRecords[realIdx];
+  console.log('刪除紀錄 savedAt=',deletedRec.savedAt,'type=',deletedRec.type);
+  // 先從本地移除
   mgRecords.splice(realIdx,1);
   deletedKeys.add(recKeyLocal(deletedRec));
   saveState();
   filteredMgRecords=filteredMgRecords.filter((_,ii)=>ii!==i);
   renderMgHistory(filteredMgRecords);updateMgReviewBadge();renderMgDash();
-  showToast('紀錄已刪除，正在同步...');
+  showToast('紀錄已刪除，正在同步至雲端...');
+  // 呼叫 Sheets 刪除
+  console.log('呼叫 deleteRecordInSheets...');
   await deleteRecordInSheets(deletedRec);
-  showToast('紀錄已刪除並同步至雲端');
+  console.log('deleteRecordInSheets 完成');
+  showToast('紀錄已同步至雲端');
 }
 function showMonthReviewOpinion(mo){
   const rev=mgRecords.find(r=>r.type==='mg-month-review'&&r.month===mo);
