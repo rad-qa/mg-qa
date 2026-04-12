@@ -775,7 +775,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink);bo
   <div class="hf">
     <div class="fg"><label>類型</label><select id="mg-h-type" style="width:140px"><option value="">全部</option><option value="mg-weekly">每週</option><option value="mg-monthly-item">每月</option><option value="mg-semiannual">每半年</option></select></div>
     <div class="fg"><label>月份</label><input type="month" id="mg-h-month" style="width:148px"></div>
-    <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button><button class="btn btn-teal btn-sm" onclick="manualSyncHistory()">↻ 同步資料</button></div></div>
+    <div class="fg"><label>&nbsp;</label><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn btn-pk btn-sm" onclick="filterMgHistory()">查詢</button><button class="btn btn-g btn-sm" onclick="exportMgExcel()">匯出Excel</button><button class="btn btn-teal btn-sm" onclick="manualSyncHistory()">↻ 同步資料</button><span style="font-size:11px;color:var(--gray)">請先同步資料以取得最新資料</span></div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="scroll-hint-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
@@ -1515,6 +1515,12 @@ function showMgPage(p,btn){
   if(p==='history'){filteredMgRecords=[...mgRecords];renderMgHistory(filteredMgRecords);renderMgMonthReviewList();}
   if(p==='dash') renderMgDash();
   if(p==='settings'){populateMgEquipSettings();populateMgScreenSettings();populateMgPhantomSettings();populateMgCompressSettings();populateMgToolSettings();populateUserTable('mg-user-tbody');populateMgNotify();populateMgHintsSettings();populateSheetsSettings();}
+  // 進入列印報表時自動從 Sheets 同步最新資料
+  if(p==='print'){
+    fetchAllFromSheets().then(ok=>{
+      if(ok) showToast('列印資料已更新至最新版本');
+    });
+  }
   setTimeout(initScrollHints,80);
 }
 function showWTab(tab,btn){
